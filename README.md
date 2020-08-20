@@ -1,0 +1,1 @@
+# go-patchutils [![Go Report Card](https://goreportcard.com/badge/github.com/google/go-patchutils)](https://goreportcard.com/report/github.com/google/go-patchutils)
