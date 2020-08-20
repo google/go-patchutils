@@ -18,6 +18,10 @@ type mixedCmd struct {
 	newDiff   string
 }
 
+func init() {
+	subcommands.Register(&mixedCmd{}, "")
+}
+
 func (*mixedCmd) Name() string { return "mixed" }
 func (*mixedCmd) Synopsis() string {
 	return "compute difference between " +

@@ -16,6 +16,10 @@ type interdiffCmd struct {
 	newDiff string
 }
 
+func init() {
+	subcommands.Register(&interdiffCmd{}, "")
+}
+
 func (*interdiffCmd) Name() string { return "interdiff" }
 func (*interdiffCmd) Synopsis() string {
 	return "compute difference between " +
