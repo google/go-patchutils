@@ -2,6 +2,7 @@ package patchutils
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,16 +17,25 @@ var interDiffFileTests = []struct {
 	diffAFile  string
 	diffBFile  string
 	resultFile string
+	wantErr    error
 }{
 	{
 		diffAFile:  "s1_a.diff",
 		diffBFile:  "s1_b.diff",
 		resultFile: "s1_a_b.diff",
+		wantErr:    nil,
 	},
 	{
 		diffAFile:  "s2_a.diff",
 		diffBFile:  "s2_b.diff",
 		resultFile: "s2_a_b.diff",
+		wantErr:    nil,
+	},
+	{
+		diffAFile:  "f1_a_wrong_origin.diff",
+		diffBFile:  "f1_b.diff",
+		resultFile: "f1_a_c.diff",
+		wantErr:    ErrContentMismatch,
 	},
 }
 
@@ -33,62 +43,62 @@ var applyDiffFileTests = []struct {
 	sourceFile string
 	diffFile   string
 	resultFile string
-	wantErr    bool
+	wantErr    error
 }{
 	{
 		sourceFile: "source_1/file_1.txt",
 		diffFile:   "f1_a.diff",
 		resultFile: "source_1_a/file_1.txt",
-		wantErr:    false,
+		wantErr:    nil,
 	},
 	{
 		sourceFile: "source_1_a/file_1.txt",
 		diffFile:   "f1_a_c.diff",
 		resultFile: "source_1_c/file_1.txt",
-		wantErr:    false,
+		wantErr:    nil,
 	},
 	{
 		sourceFile: "source_1/file_1.txt",
 		diffFile:   "f1_b.diff",
 		resultFile: "source_1_b/file_1.txt",
-		wantErr:    false,
+		wantErr:    nil,
 	},
 	{
 		sourceFile: "source_1_b/file_1.txt",
 		diffFile:   "f1_b_c.diff",
 		resultFile: "source_1_c/file_1.txt",
-		wantErr:    false,
+		wantErr:    nil,
 	},
 	{
 		sourceFile: "source_1/file_2.txt",
 		diffFile:   "f2_a.diff",
 		resultFile: "source_1_a/file_2.txt",
-		wantErr:    false,
+		wantErr:    nil,
 	},
 	{
 		sourceFile: "source_1_a/file_2.txt",
 		diffFile:   "f2_a_c.diff",
 		resultFile: "source_1_c/file_2.txt",
-		wantErr:    false,
+		wantErr:    nil,
 	},
 	{
 		sourceFile: "source_1/file_2.txt",
 		diffFile:   "f2_b.diff",
 		resultFile: "source_1_b/file_2.txt",
-		wantErr:    false,
+		wantErr:    nil,
 	},
 	{
 		sourceFile: "source_1_b/file_2.txt",
 		diffFile:   "f2_b_c.diff",
 		resultFile: "source_1_c/file_2.txt",
-		wantErr:    false,
+		wantErr:    nil,
 	},
 	// sourceFile and diffFile have different origin content.
 	{
 		sourceFile: "source_1/file_1.txt",
 		diffFile:   "f1_a_wrong_origin.diff",
 		resultFile: "source_1_a/file_1.txt",
-		wantErr:    true,
+		wantErr:    ErrContentMismatch,
 	},
 }
 
@@ -207,13 +217,14 @@ func TestInterDiffMode(t *testing.T) {
 			var readerB io.Reader = fileB
 
 			currentResult, err := InterDiff(readerA, readerB)
-			if err != nil {
-				t.Error(err)
-			}
 
-			if !bytes.Equal(normalizeNewlines([]byte(currentResult)), normalizeNewlines(correctResult)) {
-				t.Errorf("File contents mismatch for %s.\nExpected:\n%s\nGot:\n%s\n",
-					tt.resultFile, correctResult, currentResult)
+			if (tt.wantErr == nil) && (err == nil) {
+				if !bytes.Equal(normalizeNewlines([]byte(currentResult)), normalizeNewlines(correctResult)) {
+					t.Errorf("File contents mismatch for %s.\nExpected:\n%s\nGot:\n%s\n",
+						tt.resultFile, correctResult, currentResult)
+				}
+			} else if !errors.Is(err, tt.wantErr) {
+				t.Errorf("Interdiff mode for %q: got error %v; want error %v", tt.resultFile, err, tt.wantErr)
 			}
 		})
 	}
@@ -243,17 +254,13 @@ func TestApplyDiff(t *testing.T) {
 			}
 
 			currentResult, err := ApplyDiff(string(source), d)
-			if tt.wantErr && err == nil {
-				t.Errorf("Applying diff for %q: got error nil; want error non-nil", tt.resultFile)
-			} else if !tt.wantErr {
-				if err != nil {
-					t.Errorf("Applying diff for %q: got error %v; want error nil", tt.resultFile, err)
-				}
-
+			if tt.wantErr == nil && err == nil {
 				if !bytes.Equal(normalizeNewlines([]byte(currentResult)), normalizeNewlines(correctResult)) {
 					t.Errorf("File contents mismatch for %s.\nGot:\n%s\nWant:\n%s\n",
 						tt.resultFile, currentResult, correctResult)
 				}
+			} else if !errors.Is(err, tt.wantErr) {
+				t.Errorf("Applying diff for %q: got error %v; want error %v", tt.resultFile, err, tt.wantErr)
 			}
 		})
 	}
