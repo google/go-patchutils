@@ -242,7 +242,7 @@ func TestApplyDiff(t *testing.T) {
 				t.Errorf("Error reading resultFile %q", tt.resultFile)
 			}
 
-			currentResult, err := ApplyDiff(string(source), d)
+			currentResult, err := applyDiff(string(source), d)
 			if tt.wantErr && err == nil {
 				t.Errorf("Applying diff for %q: got error nil; want error non-nil", tt.resultFile)
 			} else if !tt.wantErr {
