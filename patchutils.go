@@ -94,12 +94,12 @@ func MixedMode(oldSource, newSource io.Reader, oldFileDiff, newFileDiff *diff.Fi
 		return "", fmt.Errorf("reading content of NewSource: %w", err)
 	}
 
-	updatedOldSource, err := ApplyDiff(oldSourceContent, oldFileDiff)
+	updatedOldSource, err := applyDiff(oldSourceContent, oldFileDiff)
 	if err != nil {
 		return "", fmt.Errorf("applying diff to OldSource: %w", err)
 	}
 
-	updatedNewSource, err := ApplyDiff(newSourceContent, newFileDiff)
+	updatedNewSource, err := applyDiff(newSourceContent, newFileDiff)
 	if err != nil {
 		return "", fmt.Errorf("applying diff to NewSource: %w", err)
 	}
@@ -196,8 +196,8 @@ func readContent(source io.Reader) (string, error) {
 	return buf.String(), nil
 }
 
-// ApplyDiff returns applied changes from diffFile to source
-func ApplyDiff(source string, diffFile *diff.FileDiff) (string, error) {
+// applyDiff returns applied changes from diffFile to source
+func applyDiff(source string, diffFile *diff.FileDiff) (string, error) {
 	sourceBody := strings.Split(source, "\n")
 
 	// currentOrgSourceI = 1 -- In diff lines started counting from 1
