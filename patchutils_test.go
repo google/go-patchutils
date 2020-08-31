@@ -45,6 +45,13 @@ var interDiffFileTests = []struct {
 		resultFile: "s2_a_b.diff",
 		wantErr:    ErrEmptyDiffFile,
 	},
+	{
+		// Empty diff file
+		diffAFile:  "empty.diff",
+		diffBFile:  "s2_b.diff",
+		resultFile: "s2_a_b.diff",
+		wantErr:    ErrEmptyDiffFile,
+	},
 }
 
 var applyDiffFileTests = []struct {
