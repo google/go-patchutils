@@ -36,6 +36,8 @@ var interDiffFileTests = []struct {
 		diffBFile:  "f1_b.diff",
 		resultFile: "f1_a_c.diff",
 		wantErr:    ErrContentMismatch,
+	},
+	{
 		// Not a diff file
 		diffAFile:  "source_1/file_1.txt",
 		diffBFile:  "s2_b.diff",
@@ -273,13 +275,7 @@ func TestApplyDiff(t *testing.T) {
 			}
 
 			currentResult, err := applyDiff(string(source), d)
-			if tt.wantErr && err == nil {
-				t.Errorf("Applying diff for %q: got error nil; want error non-nil", tt.resultFile)
-			} else if !tt.wantErr {
-				if err != nil {
-					t.Errorf("Applying diff for %q: got error %v; want error nil", tt.resultFile, err)
-				}
-
+			if (tt.wantErr == nil) && (err == nil) {
 				if !bytes.Equal(normalizeNewlines([]byte(currentResult)), normalizeNewlines(correctResult)) {
 					t.Errorf("File contents mismatch for %s.\nGot:\n%s\nWant:\n%s\n",
 						tt.resultFile, currentResult, correctResult)
