@@ -18,15 +18,19 @@ import (
 // oldDiff and newDiff should be in unified format.
 func InterDiff(oldDiff, newDiff io.Reader) (string, error) {
 	oldFileDiffs, err := diff.NewMultiFileDiffReader(oldDiff).ReadAllFiles()
-
 	if err != nil {
 		return "", fmt.Errorf("parsing oldDiff: %w", err)
 	}
+	if len(oldFileDiffs) == 0 {
+		return "", fmt.Errorf("oldDiff: %w", ErrEmptyDiffFile)
+	}
 
 	newFileDiffs, err := diff.NewMultiFileDiffReader(newDiff).ReadAllFiles()
-
 	if err != nil {
 		return "", fmt.Errorf("parsing newDiff: %w", err)
+	}
+	if len(newFileDiffs) == 0 {
+		return "", fmt.Errorf("newDiff: %w", ErrEmptyDiffFile)
 	}
 
 	result := ""
@@ -94,12 +98,12 @@ func MixedMode(oldSource, newSource io.Reader, oldFileDiff, newFileDiff *diff.Fi
 		return "", fmt.Errorf("reading content of NewSource: %w", err)
 	}
 
-	updatedOldSource, err := ApplyDiff(oldSourceContent, oldFileDiff)
+	updatedOldSource, err := applyDiff(oldSourceContent, oldFileDiff)
 	if err != nil {
 		return "", fmt.Errorf("applying diff to OldSource: %w", err)
 	}
 
-	updatedNewSource, err := ApplyDiff(newSourceContent, newFileDiff)
+	updatedNewSource, err := applyDiff(newSourceContent, newFileDiff)
 	if err != nil {
 		return "", fmt.Errorf("applying diff to NewSource: %w", err)
 	}
@@ -196,8 +200,8 @@ func readContent(source io.Reader) (string, error) {
 	return buf.String(), nil
 }
 
-// ApplyDiff returns applied changes from diffFile to source
-func ApplyDiff(source string, diffFile *diff.FileDiff) (string, error) {
+// applyDiff returns applied changes from diffFile to source
+func applyDiff(source string, diffFile *diff.FileDiff) (string, error) {
 	sourceBody := strings.Split(source, "\n")
 
 	// currentOrgSourceI = 1 -- In diff lines started counting from 1
@@ -891,5 +895,10 @@ func revertedLine(line string) string {
 	}
 }
 
+
 // ErrContentMismatch indicates that compared content is not same.
 var ErrContentMismatch = errors.New("content mismatch")
+
+// ErrEmptyDiffFile indicates that provided file doesn't contain any information about changes.
+var ErrEmptyDiffFile = errors.New("empty diff file")
+
