@@ -27,36 +27,38 @@ func (*interdiffCmd) Synopsis() string {
 }
 func (*interdiffCmd) Usage() string {
 	return "interdiff -olddiff=<oldDiff path> -newdiff=<newDiff path>: " +
-		"Compute difference between source patched with oldDiff and same source patched with newDiff."
+		"Compute difference between source patched with oldDiff and same source patched with newDiff.\n"
 }
 
-func (i *interdiffCmd) SetFlags(f *flag.FlagSet) {
-	f.StringVar(&i.oldDiff, "olddiff", "", "oldDiff")
-	f.StringVar(&i.newDiff, "newdiff", "", "newDiff")
+func (c *interdiffCmd) SetFlags(f *flag.FlagSet) {
+	f.StringVar(&c.oldDiff, "olddiff", "", "path to the old version of diff")
+	f.StringVar(&c.newDiff, "newdiff", "", "path to the new version of diff")
 }
 
-func (i *interdiffCmd) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
-	if (i.oldDiff == "") || (i.newDiff == "") {
+func (c *interdiffCmd) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	if (c.oldDiff == "") || (c.newDiff == "") {
 		glog.Error("Error: necessary flags aren't assigned")
-		glog.Infof("Usage: %s %s", os.Args[0], i.Usage())
+		glog.Infof("Usage: %s %s", os.Args[0], c.Usage())
 		return subcommands.ExitUsageError
 	}
 
-	oldD, err := os.Open(i.oldDiff)
+	oldD, err := os.Open(c.oldDiff)
 	if err != nil {
-		glog.Errorf("Failed to open oldDiffFile: %q\n", i.oldDiff)
+		glog.Errorf("Failed to open oldDiffFile: %q\n", c.oldDiff)
 		return subcommands.ExitFailure
 	}
+	defer oldD.Close()
 
-	newD, err := os.Open(i.newDiff)
+	newD, err := os.Open(c.newDiff)
 	if err != nil {
-		glog.Errorf("Failed to open newDiffFile %q\n", i.newDiff)
+		glog.Errorf("Failed to open newDiffFile %q\n", c.newDiff)
 		return subcommands.ExitFailure
 	}
+	defer newD.Close()
 
 	result, err := patchutils.InterDiff(oldD, newD)
 	if err != nil {
-		glog.Errorf("Error during computing diff for %q and %q: %v\n", i.oldDiff, i.newDiff, err)
+		glog.Errorf("Error during computing diff for %q and %q: %v\n", c.oldDiff, c.newDiff, err)
 		return subcommands.ExitFailure
 	}
 
