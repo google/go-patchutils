@@ -85,9 +85,9 @@ func InterDiff(oldDiff, newDiff io.Reader) (string, error) {
 	return result, nil
 }
 
-// MixedMode computes the diff of a oldSource file patched with oldDiff
+// mixedMode computes the diff of a oldSource file patched with oldDiff
 // and the newSource file patched with newDiff.
-func MixedMode(oldSource, newSource io.Reader, oldFileDiff, newFileDiff *diff.FileDiff) (string, error) {
+func mixedMode(oldSource, newSource io.Reader, oldFileDiff, newFileDiff *diff.FileDiff) (string, error) {
 	oldSourceContent, err := readContent(oldSource)
 	if err != nil {
 		return "", fmt.Errorf("reading content of OldSource: %w", err)
@@ -131,8 +131,8 @@ func MixedMode(oldSource, newSource io.Reader, oldFileDiff, newFileDiff *diff.Fi
 	return string(result), nil
 }
 
-// MixedModePath computes the diff of a oldSource patched with oldDiff
-// and the newSource patched with newDiff.
+// MixedModePath recursively computes the diff of an oldSource patched with oldDiff
+// and the newSource patched with newDiff, recursively if OldSource and NewSource are directories.
 func MixedModePath(oldSourcePath, newSourcePath string, oldDiff, newDiff io.Reader) (string, error) {
 	// Get stats of sources
 	oldSourceStat, err := os.Stat(oldSourcePath)
@@ -258,7 +258,7 @@ func mixedModeFilePath(oldSourcePath, newSourcePath string, oldFileDiff, newFile
 			newSourcePath, err)
 	}
 
-	resultString, err := MixedMode(oldSourceFile, newSourceFile, oldFileDiff, newFileDiff)
+	resultString, err := mixedMode(oldSourceFile, newSourceFile, oldFileDiff, newFileDiff)
 	if err != nil {
 		return "", fmt.Errorf("compute diff for %q: %w",
 			oldFileDiff.OrigName, err)
