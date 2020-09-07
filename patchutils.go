@@ -18,15 +18,19 @@ import (
 // oldDiff and newDiff should be in unified format.
 func InterDiff(oldDiff, newDiff io.Reader) (string, error) {
 	oldFileDiffs, err := diff.NewMultiFileDiffReader(oldDiff).ReadAllFiles()
-
 	if err != nil {
 		return "", fmt.Errorf("parsing oldDiff: %w", err)
 	}
+	if len(oldFileDiffs) == 0 {
+		return "", fmt.Errorf("oldDiff: %w", ErrEmptyDiffFile)
+	}
 
 	newFileDiffs, err := diff.NewMultiFileDiffReader(newDiff).ReadAllFiles()
-
 	if err != nil {
 		return "", fmt.Errorf("parsing newDiff: %w", err)
+	}
+	if len(newFileDiffs) == 0 {
+		return "", fmt.Errorf("newDiff: %w", ErrEmptyDiffFile)
 	}
 
 	result := ""
@@ -110,11 +114,11 @@ Loop:
 	return result, nil
 }
 
-// MixedMode computes the diff of a oldSource file patched with oldDiff
+// mixedMode computes the diff of a oldSource file patched with oldDiff
 // and the newSource file patched with newDiff.
 // Check if files are added/deleted in old/new versions is skipped.
-func MixedMode(oldSource, newSource io.Reader, oldFileDiff, newFileDiff *diff.FileDiff) (string, error) {
-	// Skipping check if in some version file have been added/deleted as this is already done in MixedModeFilePath,
+func mixedMode(oldSource, newSource io.Reader, oldFileDiff, newFileDiff *diff.FileDiff) (string, error) {
+  // Skipping check if in some version file have been added/deleted as this is already done in MixedModeFilePath,
 	// before opening oldSource and newSource files
 	oldSourceContent, err := readContent(oldSource)
 	if err != nil {
@@ -126,12 +130,12 @@ func MixedMode(oldSource, newSource io.Reader, oldFileDiff, newFileDiff *diff.Fi
 		return "", fmt.Errorf("reading content of NewSource: %w", err)
 	}
 
-	updatedOldSource, err := ApplyDiff(oldSourceContent, oldFileDiff)
+	updatedOldSource, err := applyDiff(oldSourceContent, oldFileDiff)
 	if err != nil {
 		return "", fmt.Errorf("applying diff to OldSource: %w", err)
 	}
 
-	updatedNewSource, err := ApplyDiff(newSourceContent, newFileDiff)
+	updatedNewSource, err := applyDiff(newSourceContent, newFileDiff)
 	if err != nil {
 		return "", fmt.Errorf("applying diff to NewSource: %w", err)
 	}
@@ -159,8 +163,8 @@ func MixedMode(oldSource, newSource io.Reader, oldFileDiff, newFileDiff *diff.Fi
 	return string(result), nil
 }
 
-// MixedModePath computes the diff of a oldSource patched with oldDiff
-// and the newSource patched with newDiff.
+// MixedModePath recursively computes the diff of an oldSource patched with oldDiff
+// and the newSource patched with newDiff, recursively if OldSource and NewSource are directories.
 func MixedModePath(oldSourcePath, newSourcePath string, oldDiff, newDiff io.Reader) (string, error) {
 	// Get stats of sources
 	oldSourceStat, err := os.Stat(oldSourcePath)
@@ -228,8 +232,8 @@ func readContent(source io.Reader) (string, error) {
 	return buf.String(), nil
 }
 
-// ApplyDiff returns applied changes from diffFile to source
-func ApplyDiff(source string, diffFile *diff.FileDiff) (string, error) {
+// applyDiff returns applied changes from diffFile to source
+func applyDiff(source string, diffFile *diff.FileDiff) (string, error) {
 	sourceBody := strings.Split(source, "\n")
 
 	// currentOrgSourceI = 1 -- In diff lines started counting from 1
@@ -303,7 +307,7 @@ func mixedModeFilePath(oldSourcePath, newSourcePath string, oldFileDiff, newFile
 			newSourcePath, err)
 	}
 
-	resultString, err := MixedMode(oldSourceFile, newSourceFile, oldFileDiff, newFileDiff)
+	resultString, err := mixedMode(oldSourceFile, newSourceFile, oldFileDiff, newFileDiff)
 	if err != nil {
 		return "", fmt.Errorf("compute diff for %q: %w",
 			oldFileDiff.OrigName, err)
@@ -1022,3 +1026,6 @@ func revertedLine(line string) string {
 		return line
 	}
 }
+
+// ErrEmptyDiffFile indicates that provided file doesn't contain any information about changes.
+var ErrEmptyDiffFile = errors.New("empty diff file")

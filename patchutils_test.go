@@ -2,6 +2,7 @@ package patchutils
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,16 +17,40 @@ var interDiffFileTests = []struct {
 	diffAFile  string
 	diffBFile  string
 	resultFile string
+	wantErr    error
 }{
 	{
 		diffAFile:  "s1_a.diff",
 		diffBFile:  "s1_b.diff",
 		resultFile: "s1_a_b.diff",
+		wantErr:    nil,
 	},
 	{
 		diffAFile:  "s2_a.diff",
 		diffBFile:  "s2_b.diff",
 		resultFile: "s2_a_b.diff",
+		wantErr:    nil,
+	},
+	{
+		// Not a diff file
+		diffAFile:  "source_1/file_1.txt",
+		diffBFile:  "s2_b.diff",
+		resultFile: "s2_a_b.diff",
+		wantErr:    ErrEmptyDiffFile,
+	},
+	{
+		diffAFile: "s2_a.diff",
+		// Not a diff file
+		diffBFile:  "source_1/file_2.txt",
+		resultFile: "s2_a_b.diff",
+		wantErr:    ErrEmptyDiffFile,
+	},
+	{
+		// Empty diff file
+		diffAFile:  "empty.diff",
+		diffBFile:  "s2_b.diff",
+		resultFile: "s2_a_b.diff",
+		wantErr:    ErrEmptyDiffFile,
 	},
 	// Contains added/deleted files
 	{
@@ -218,13 +243,13 @@ func TestInterDiffMode(t *testing.T) {
 			var readerB io.Reader = fileB
 
 			currentResult, err := InterDiff(readerA, readerB)
-			if err != nil {
+			if (tt.wantErr == nil) && (err == nil) {
+				if !bytes.Equal(normalizeNewlines([]byte(currentResult)), normalizeNewlines(correctResult)) {
+					t.Errorf("File contents mismatch for %s.\nExpected:\n%s\nGot:\n%s\n",
+						tt.resultFile, correctResult, currentResult)
+				}
+			} else if !errors.Is(err, tt.wantErr) {
 				t.Error(err)
-			}
-
-			if !bytes.Equal(normalizeNewlines([]byte(currentResult)), normalizeNewlines(correctResult)) {
-				t.Errorf("File contents mismatch for %s.\nExpected:\n%s\nGot:\n%s\n",
-					tt.resultFile, correctResult, currentResult)
 			}
 		})
 	}
@@ -253,7 +278,7 @@ func TestApplyDiff(t *testing.T) {
 				t.Errorf("Error reading resultFile %q", tt.resultFile)
 			}
 
-			currentResult, err := ApplyDiff(string(source), d)
+			currentResult, err := applyDiff(string(source), d)
 			if tt.wantErr && err == nil {
 				t.Errorf("Applying diff for %q: got error nil; want error non-nil", tt.resultFile)
 			} else if !tt.wantErr {
@@ -308,7 +333,7 @@ func TestMixedMode(t *testing.T) {
 				t.Errorf("Error reading resultFile %q", tt.resultFile)
 			}
 
-			currentResult, err := MixedMode(oldSource, newSource, oldD, newD)
+			currentResult, err := mixedMode(oldSource, newSource, oldD, newD)
 
 			if err != nil {
 				t.Errorf("Mixed mode for %q: got error %v; want error nil", tt.resultFile, err)
