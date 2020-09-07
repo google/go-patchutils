@@ -322,7 +322,7 @@ func TestMixedMode(t *testing.T) {
 				t.Errorf("Error reading resultFile %q", tt.resultFile)
 			}
 
-			currentResult, err := MixedMode(oldSource, newSource, oldD, newD)
+			currentResult, err := mixedMode(oldSource, newSource, oldD, newD)
 
 			if err != nil {
 				t.Errorf("Mixed mode for %q: got error %v; want error nil", tt.resultFile, err)
