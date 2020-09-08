@@ -131,6 +131,27 @@ func mixedMode(oldSource, newSource io.Reader, oldFileDiff, newFileDiff *diff.Fi
 	return string(result), nil
 }
 
+// MixedModeFile computes the diff of an oldSource file patched with oldDiff and
+// newSource file patched with newDiff.
+func MixedModeFile(oldSource, newSource, oldDiff, newDiff io.Reader) (string, error) {
+	oldD, err := diff.NewFileDiffReader(oldDiff).Read()
+	if err != nil {
+		return "", fmt.Errorf("parsing oldDiff: %w", err)
+	}
+
+	newD, err := diff.NewFileDiffReader(newDiff).Read()
+	if err != nil {
+		return "", fmt.Errorf("parsing newDiff: %w", err)
+	}
+
+	result, err := mixedMode(oldSource, newSource, oldD, newD)
+	if err != nil {
+		return "", fmt.Errorf("mixedMode: %w", err)
+	}
+
+	return result, nil
+}
+
 // MixedModePath recursively computes the diff of an oldSource patched with oldDiff
 // and the newSource patched with newDiff, recursively if OldSource and NewSource are directories.
 func MixedModePath(oldSourcePath, newSourcePath string, oldDiff, newDiff io.Reader) (string, error) {
