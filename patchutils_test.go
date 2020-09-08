@@ -336,6 +336,48 @@ func TestMixedMode(t *testing.T) {
 	}
 }
 
+func TestMixedModeFile(t *testing.T) {
+	for _, tt := range mixedModeFileTests {
+		t.Run(tt.resultFile, func(t *testing.T) {
+			oldSource, err := os.Open(tt.oldSourceFile)
+			if err != nil {
+				t.Errorf("Error opening oldSourceFile %q", tt.oldSourceFile)
+			}
+
+			newSource, err := os.Open(tt.newSourceFile)
+			if err != nil {
+				t.Errorf("Error opening newSourceFile %q", tt.newSourceFile)
+			}
+
+			oldDiffFile, err := os.Open(tt.oldDiffFile)
+			if err != nil {
+				t.Errorf("Error opening oldDiffFile %q", tt.oldDiffFile)
+			}
+
+			newDiffFile, err := os.Open(tt.newDiffFile)
+			if err != nil {
+				t.Errorf("Error opening newDiffFile %q", tt.newDiffFile)
+			}
+
+			correctResult, err := ioutil.ReadFile(tt.resultFile)
+			if err != nil {
+				t.Errorf("Error reading resultFile %q", tt.resultFile)
+			}
+
+			currentResult, err := MixedModeFile(oldSource, newSource, oldDiffFile, newDiffFile)
+
+			if err != nil {
+				t.Errorf("Mixed mode for %q: got error %v; want error nil", tt.resultFile, err)
+			}
+
+			if !bytes.Equal(normalizeNewlines([]byte(currentResult)), normalizeNewlines(correctResult)) {
+				t.Errorf("File contents mismatch for %s.\nGot:\n%s\nWant:\n%s\n",
+					tt.resultFile, currentResult, correctResult)
+			}
+		})
+	}
+}
+
 func TestMixedModePath(t *testing.T) {
 	for _, tt := range mixedModePathFileTests {
 		t.Run(tt.resultFile, func(t *testing.T) {
