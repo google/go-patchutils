@@ -727,7 +727,6 @@ func mergeOverlappingHunks(oldHunks, newHunks []*diff.Hunk) (*diff.Hunk, error) 
 
 		switch {
 		case (i == -1) && (j == -1):
-			break
 		case (i >= 0) && (j == -1):
 			// Changes are only in oldHunk
 			newBody = append(newBody, revertedLine(oldHunkBody[i]))
