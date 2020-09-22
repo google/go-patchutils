@@ -1,3 +1,4 @@
+// Package main provides a cli tool to compute the diff between source and diff files.
 package main
 
 import (
