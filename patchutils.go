@@ -49,11 +49,11 @@ Loop:
 				j++
 				continue Loop
 			case oldFileDiffs[i].NewName == "":
-				// File have deleted in olf version
+				// File was deleted in old version
 				result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(newFileDiffs[j].NewName),
 					filepath.Base(newFileDiffs[j].NewName))
 			case newFileDiffs[j].NewName == "":
-				// File have been deleted in new version
+				// File deleted in new version
 				result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(oldFileDiffs[i].NewName),
 					filepath.Base(oldFileDiffs[i].NewName))
 			default:
@@ -75,13 +75,18 @@ Loop:
 			i++
 			j++
 		case oldFileDiffs[i].OrigName < newFileDiffs[j].OrigName:
+			// current file is only mentioned in oldDiff
+			// determine if file have been added or just changed in only one version
+			revertHunks(oldFileDiffs[i])
 			oldD, err := interPrintSingleFileDiff(oldFileDiffs[i])
 			if err != nil {
 				return "", fmt.Errorf("printing oldDiff: %w", err)
 			}
 			result += oldD
 			i++
-		default:
+		case oldFileDiffs[i].OrigName > newFileDiffs[j].OrigName:
+			// current file is only mentioned in newDiff
+			// determine if file have been added or just changed in only one version
 			newD, err := interPrintSingleFileDiff(newFileDiffs[j])
 			if err != nil {
 				return "", fmt.Errorf("printing newDiff: %w", err)
@@ -118,7 +123,7 @@ Loop:
 // and the newSource file patched with newDiff.
 // Check if files are added/deleted in old/new versions is skipped.
 func mixedMode(oldSource, newSource io.Reader, oldFileDiff, newFileDiff *diff.FileDiff) (string, error) {
-  // Skipping check if in some version file have been added/deleted as this is already done in MixedModeFilePath,
+	// Skipping check if in some version file have been added/deleted as this is already done in MixedModeFilePath,
 	// before opening oldSource and newSource files
 	oldSourceContent, err := readContent(oldSource)
 	if err != nil {
@@ -693,8 +698,8 @@ func interPrintSingleFileDiff(diffFile *diff.FileDiff) (string, error) {
 		return fmt.Sprintf("Only in %s: %s\n", filepath.Dir(diffFile.OrigName),
 			filepath.Base(diffFile.OrigName)), nil
 	}
+
 	// File have been changed in current version and left unchanged in other version
-	revertHunks(diffFile)
 	oldD, err := diff.PrintFileDiff(diffFile)
 	if err != nil {
 		return "", fmt.Errorf("printing diff for file %q: %w",
