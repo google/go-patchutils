@@ -225,8 +225,8 @@ func applyDiff(source string, diffFile *diff.FileDiff) (string, error) {
 			} else {
 				if line[1:] != sourceBody[currentOrgSourceI-1] {
 					return "", fmt.Errorf(
-						"%w in source: (%d) %q and diff: %q",
-						ErrContentMismatch, currentOrgSourceI, sourceBody[currentOrgSourceI-1], line[1:])
+						"line %d in source (%q) and diff (%q): %w",
+						currentOrgSourceI, sourceBody[currentOrgSourceI-1], line[1:], ErrContentMismatch)
 				}
 
 				if strings.HasPrefix(line, " ") {
@@ -742,8 +742,8 @@ func mergeOverlappingHunks(oldHunks, newHunks []*diff.Hunk) (*diff.Hunk, error) 
 				// Checking if original content is the same
 				if oldHunkBody[i][1:] != newHunkBody[j][1:] {
 					return nil, fmt.Errorf(
-						"%w for original line %d in oldDiff: %q and newDiff: %q",
-						ErrContentMismatch, currentOrgI, oldHunkBody[i][1:], newHunkBody[j][1:])
+						"line in original %d in oldDiff (%q) and newDiff (%q): %w",
+						currentOrgI, oldHunkBody[i][1:], newHunkBody[j][1:], ErrContentMismatch)
 				}
 				switch {
 				case strings.HasPrefix(oldHunkBody[i], " ") && strings.HasPrefix(newHunkBody[j], " "):
@@ -895,10 +895,8 @@ func revertedLine(line string) string {
 	}
 }
 
-
 // ErrContentMismatch indicates that compared content is not same.
 var ErrContentMismatch = errors.New("content mismatch")
 
 // ErrEmptyDiffFile indicates that provided file doesn't contain any information about changes.
 var ErrEmptyDiffFile = errors.New("empty diff file")
-
