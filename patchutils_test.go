@@ -32,6 +32,12 @@ var interDiffFileTests = []struct {
 		wantErr:    nil,
 	},
 	{
+		diffAFile:  "s3_a.diff",
+		diffBFile:  "s3_b.diff",
+		resultFile: "s3_a_b.diff",
+		wantErr:    nil,
+	},
+	{
 		diffAFile:  "f1_a_wrong_origin.diff",
 		diffBFile:  "f1_b.diff",
 		resultFile: "f1_a_c.diff",
