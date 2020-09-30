@@ -752,12 +752,8 @@ func mergeOverlappingHunks(oldHunks, newHunks []*diff.Hunk) (*diff.Hunk, error) 
 			switch {
 			// Firstly proceeding added lines,
 			// because added lines are between previous currentOrgI and currentOrgI.
-			case strings.HasPrefix(oldHunkBody[i], "+"):
-				newBody = append(newBody, revertedLine(oldHunkBody[i]))
-				i++
-			case strings.HasPrefix(newHunkBody[j], "+"):
-				newBody = append(newBody, newHunkBody[j])
-				j++
+			case strings.HasPrefix(oldHunkBody[i], "+") || strings.HasPrefix(newHunkBody[j], "+"):
+				newBody = append(newBody, interAddedLines(&i, &j, &oldHunkBody, &newHunkBody)...)
 			default:
 				// Checking if original content is the same
 				if oldHunkBody[i][1:] != newHunkBody[j][1:] {
@@ -805,6 +801,38 @@ func mergeOverlappingHunks(oldHunks, newHunks []*diff.Hunk) (*diff.Hunk, error) 
 	}
 
 	return nil, nil
+}
+
+// interAddedLines finds interdiff between added lines in oldHunkBody (after i) and newHunkBody (after j)
+func interAddedLines(i, j *int, oldHunkBody, newHunkBody *[]string) []string {
+	var result, oldAddedLines, newAddedLines []string
+	// Collect added lines in oldHunkBody
+	for (*i < len(*oldHunkBody)) && (strings.HasPrefix((*oldHunkBody)[*i], "+")) {
+		oldAddedLines = append(oldAddedLines, (*oldHunkBody)[*i][1:])
+		*i++
+	}
+	// Collect added lines in newHunkBody
+	for (*j < len(*newHunkBody)) && (strings.HasPrefix((*newHunkBody)[*j], "+")) {
+		newAddedLines = append(newAddedLines, (*newHunkBody)[*j][1:])
+		*j++
+	}
+
+	// Difference between collected added lines
+	chunks := dbd.DiffChunks(oldAddedLines, newAddedLines)
+	for _, c := range chunks {
+		// A chunk will not have both added and deleted lines.
+		for _, line := range c.Added {
+			result = append(result, "+"+line)
+		}
+		for _, line := range c.Deleted {
+			result = append(result, "-"+line)
+		}
+		for _, line := range c.Equal {
+			result = append(result, " "+line)
+		}
+	}
+
+	return result
 }
 
 // configureResultHunk returns a new diff.Hunk (with configured StartLines and NumberLines)
