@@ -64,6 +64,12 @@ var interDiffFileTests = []struct {
 		resultFile: "s2_a_b.diff",
 		wantErr:    ErrEmptyDiffFile,
 	},
+	// Contains added/deleted files
+	{
+		diffAFile:  "s1_a_c.diff",
+		diffBFile:  "s1_a_d.diff",
+		resultFile: "s1_c_d.diff",
+	},
 }
 
 var applyDiffFileTests = []struct {
@@ -186,7 +192,6 @@ var mixedModePathFileTests = []struct {
 		resultFile:  "s1_a_c.diff",
 		wantErr:     false,
 	},
-	// Contains added and unchanged files
 	// Sources have different modes (file & directory)
 	{
 		oldSource:   "source_1",
@@ -196,9 +201,15 @@ var mixedModePathFileTests = []struct {
 		resultFile:  "s1_a_c.diff",
 		wantErr:     true,
 	},
-	// TODO: uncomment this test case, when added/deleted in diff files won't be ignored
-	//{"source_1", "s1_a.diff",
-	//	"source_1_d", "s1_c_d.diff", "s1_a_d.diff"},
+	// Contains added and unchanged files
+	{
+		oldSource:   "source_1",
+		oldDiffFile: "s1_a.diff",
+		newSource:   "source_1_c",
+		newDiffFile: "s1_c_d.diff",
+		resultFile:  "s1_a_d.diff",
+		wantErr:     false,
+	},
 }
 
 // Reference: https://www.programming-books.io/essential/go/normalize-newlines-1d3abcf6f17c4186bb9617fa14074e48
