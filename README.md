@@ -15,9 +15,10 @@ Works with diff files in [unified format](http://gnu.org/software/diffutils/manu
 ## Design
 
 ### Interdiff mode
-![Interdiff mode](https://github.com/google/go-patchutils/docs/interdiff_mode.png)
-InterDiff computes the diff of a source file patched with oldDiff
-and the same source file patched with newDiff, without access to the source.
+<img src="https://github.com/google/go-patchutils/blob/main/docs/interdiff_mode.png" width="300">
+
+**InterDiff** computes the diff of a source file patched with **oldDiff**
+and the same source file patched with **newDiff**, without access to the source.
 
 <details>    
 <summary><b>Example</b></summary>
@@ -103,9 +104,10 @@ and the same source file patched with newDiff, without access to the source.
 </details>
 
 ### Mixed mode
-![Mixed mode](https://github.com/google/go-patchutils/docs/mixed_mode.png)
-MixedModeFile computes the diff of an oldSource patched with oldDiff and
-newSource patched with newDiff.
+<img src="https://github.com/google/go-patchutils/blob/main/docs/mixed_mode.png" width="300">
+
+**MixedMode** computes the diff of an **oldSource** patched with **oldDiff** and
+**newSource** patched with **newDiff**.
 
 <details>
 <summary><b>Example</b></summary>
