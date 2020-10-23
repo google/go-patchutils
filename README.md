@@ -3,7 +3,7 @@ Package patchutils provides tools to compute the diff between source and diff fi
 
 Works with diff files in [unified format](http://gnu.org/software/diffutils/manual/html_node/Unified-Format.html).
 
-### Agenda 
+### Table of contents 
 * [Design](https://github.com/google/go-patchutils#design) 
     * [Interdiff mode](https://github.com/google/go-patchutils#interdiff-mode) 
     * [Mixed mode](https://github.com/google/go-patchutils#mixed-mode) 
