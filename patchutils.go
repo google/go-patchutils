@@ -45,6 +45,7 @@ func InterDiff(oldDiff, newDiff io.Reader) (string, error) {
 	i, j := 0, 0
 
 	resultChannel := make(chan interdiffResult)
+	defer close(resultChannel)
 	filesInChannel := 0
 Loop:
 	for i < len(oldFileDiffs) && j < len(newFileDiffs) {
