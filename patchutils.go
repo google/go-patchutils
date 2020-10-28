@@ -2,15 +2,19 @@
 package patchutils
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
 
 	dbd "github.com/kylelemons/godebug/diff"
 	"github.com/sourcegraph/go-diff/diff"
+	"golang.org/x/sync/errgroup"
 )
 
 // InterDiff computes the diff of a source file patched with oldDiff
@@ -33,11 +37,10 @@ func InterDiff(oldDiff, newDiff io.Reader) (string, error) {
 		return "", fmt.Errorf("newDiff: %w", ErrEmptyDiffFile)
 	}
 
-	result := ""
-
-	// TODO: arrays need to be sorted by filenames of origin
+	resultFiles := make(map[string]string)
 	// Iterate over files in FileDiff arrays
 	i, j := 0, 0
+	eg, _ := errgroup.WithContext(context.Background())
 Loop:
 	for i < len(oldFileDiffs) && j < len(newFileDiffs) {
 		switch {
@@ -50,27 +53,32 @@ Loop:
 				continue Loop
 			case oldFileDiffs[i].NewName == "":
 				// File was deleted in old version
-				result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(newFileDiffs[j].NewName),
+				resultFiles[newFileDiffs[j].OrigName] = fmt.Sprintf("Only in %s: %s\n", filepath.Dir(newFileDiffs[j].NewName),
 					filepath.Base(newFileDiffs[j].NewName))
 			case newFileDiffs[j].NewName == "":
 				// File deleted in new version
-				result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(oldFileDiffs[i].NewName),
+				resultFiles[oldFileDiffs[i].OrigName] = fmt.Sprintf("Only in %s: %s\n", filepath.Dir(oldFileDiffs[i].NewName),
 					filepath.Base(oldFileDiffs[i].NewName))
 			default:
 				// interdiff of two versions
-				interFileDiff, err := interFileDiff(oldFileDiffs[i], newFileDiffs[j])
+				var mu sync.Mutex
+				i, j := i, j
+				eg.Go(func() error {
+					interFileDiff, err := interFileDiff(oldFileDiffs[i], newFileDiffs[j])
+					if err != nil {
+						return fmt.Errorf("merging diffs for file %q: %w", oldFileDiffs[i].OrigName, err)
+					}
 
-				if err != nil {
-					return "", fmt.Errorf("merging diffs for file %q: %w", oldFileDiffs[i].OrigName, err)
-				}
+					fileDiffContent, err := diff.PrintFileDiff(interFileDiff)
+					if err != nil {
+						return fmt.Errorf("printing merged diffs for file %q: %w", oldFileDiffs[i].OrigName, err)
+					}
 
-				fileDiffContent, err := diff.PrintFileDiff(interFileDiff)
-
-				if err != nil {
-					return "", fmt.Errorf("printing merged diffs for file %q: %w", oldFileDiffs[i].OrigName, err)
-				}
-
-				result += string(fileDiffContent)
+					mu.Lock()
+					defer mu.Unlock()
+					resultFiles[oldFileDiffs[i].OrigName] = string(fileDiffContent)
+					return nil
+				})
 			}
 			i++
 			j++
@@ -82,7 +90,7 @@ Loop:
 			if err != nil {
 				return "", fmt.Errorf("printing oldDiff: %w", err)
 			}
-			result += oldD
+			resultFiles[oldFileDiffs[i].OrigName] = oldD
 			i++
 		case oldFileDiffs[i].OrigName > newFileDiffs[j].OrigName:
 			// current file is only mentioned in newDiff
@@ -91,7 +99,7 @@ Loop:
 			if err != nil {
 				return "", fmt.Errorf("printing newDiff: %w", err)
 			}
-			result += newD
+			resultFiles[newFileDiffs[j].OrigName] = newD
 			j++
 		}
 	}
@@ -102,7 +110,7 @@ Loop:
 		if err != nil {
 			return "", fmt.Errorf("printing oldDiff: %w", err)
 		}
-		result += oldD
+		resultFiles[oldFileDiffs[i].OrigName] = oldD
 		i++
 	}
 
@@ -112,8 +120,23 @@ Loop:
 		if err != nil {
 			return "", fmt.Errorf("printing newDiff: %w", err)
 		}
-		result += newD
+		resultFiles[newFileDiffs[j].OrigName] = newD
 		j++
+	}
+
+	if err := eg.Wait(); err != nil {
+		return "", fmt.Errorf("wait all routines: %w", err)
+	}
+
+	// Add diff files to result in order
+	var originalFilenames []string
+	for f := range resultFiles {
+		originalFilenames = append(originalFilenames, f)
+	}
+	sort.Strings(originalFilenames)
+	var result string
+	for _, k := range originalFilenames {
+		result += resultFiles[k]
 	}
 
 	return result, nil

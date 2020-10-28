@@ -7,4 +7,5 @@ require (
 	github.com/google/subcommands v1.2.0
 	github.com/kylelemons/godebug v1.1.0
 	github.com/sourcegraph/go-diff v0.6.0
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 )
