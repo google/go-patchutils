@@ -2,6 +2,7 @@
 package patchutils
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -9,16 +10,12 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	dbd "github.com/kylelemons/godebug/diff"
 	"github.com/sourcegraph/go-diff/diff"
+	"golang.org/x/sync/errgroup"
 )
-
-type interdiffResult struct {
-	filename string
-	result   string
-	err      error
-}
 
 // InterDiff computes the diff of a source file patched with oldDiff
 // and the same source file patched with newDiff.
@@ -43,10 +40,7 @@ func InterDiff(oldDiff, newDiff io.Reader) (string, error) {
 	resultFiles := make(map[string]string)
 	// Iterate over files in FileDiff arrays
 	i, j := 0, 0
-
-	resultChannel := make(chan interdiffResult)
-	defer close(resultChannel)
-	filesInChannel := 0
+	eg, _ := errgroup.WithContext(context.Background())
 Loop:
 	for i < len(oldFileDiffs) && j < len(newFileDiffs) {
 		switch {
@@ -67,33 +61,24 @@ Loop:
 					filepath.Base(oldFileDiffs[i].NewName))
 			default:
 				// interdiff of two versions
-				go func(oldD, newD *diff.FileDiff, ch chan interdiffResult) {
-					interFileDiff, err := interFileDiff(oldD, newD)
+				var mu sync.Mutex
+				i, j := i, j
+				eg.Go(func() error {
+					interFileDiff, err := interFileDiff(oldFileDiffs[i], newFileDiffs[j])
 					if err != nil {
-						ch <- interdiffResult{
-							filename: oldD.OrigName,
-							result:   "",
-							err:      fmt.Errorf("merging diffs for file %q: %w", oldD.OrigName, err),
-						}
-						return
+						return fmt.Errorf("merging diffs for file %q: %w", oldFileDiffs[i].OrigName, err)
 					}
+
 					fileDiffContent, err := diff.PrintFileDiff(interFileDiff)
 					if err != nil {
-						ch <- interdiffResult{
-							filename: oldD.OrigName,
-							result:   "",
-							err:      fmt.Errorf("printing merged diffs for file %q: %w", oldD.OrigName, err),
-						}
-						return
+						return fmt.Errorf("printing merged diffs for file %q: %w", oldFileDiffs[i].OrigName, err)
 					}
-					ch <- interdiffResult{
-						filename: oldD.OrigName,
-						result:   string(fileDiffContent),
-						err:      nil,
-					}
-				}(oldFileDiffs[i], newFileDiffs[j], resultChannel)
 
-				filesInChannel++
+					mu.Lock()
+					defer mu.Unlock()
+					resultFiles[oldFileDiffs[i].OrigName] = string(fileDiffContent)
+					return nil
+				})
 			}
 			i++
 			j++
@@ -139,14 +124,8 @@ Loop:
 		j++
 	}
 
-	// Receive all computed diffs from channel
-	for filesInChannel > 0 {
-		currentInterdiff := <-resultChannel
-		if currentInterdiff.err != nil {
-			return "", currentInterdiff.err
-		}
-		resultFiles[currentInterdiff.filename] = currentInterdiff.result
-		filesInChannel--
+	if err := eg.Wait(); err != nil {
+		return "", fmt.Errorf("wait all routines: %w", err)
 	}
 
 	// Add diff files to result in order
