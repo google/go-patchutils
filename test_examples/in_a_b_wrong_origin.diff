@@ -1,0 +1,91 @@
+Only in inter_a: f1_deleted_in_both_versions.txt
+Only in inter_a: f2_deleted_in_olddiff.txt
+--- inter_a/f3_deleted_in_newdiff.txt
++++ inter_b/f3_deleted_in_newdiff.txt
+@@ -1 +1,2 @@
+-This file will be.
++This file will be deleted in new version.
++Some change here.
+--- inter_a/f5_unchanged_in_newdiff.txt
++++ inter_b/f5_unchanged_in_newdiff.txt
+@@ -1 +1,2 @@
+-Unchanged line in new version.
++Unchangedversion.
++Already happened.
+Only in inter_b: f6_new_in_olddiff.txt
+--- inter_a/f8.txt
++++ inter_b/f8.txt
+@@ -1,3 +1,4 @@
++Whole hunk in old version before next hunk in new version.
+ 1 Same line.
+ 2 Same line.
+ 3 Still same line.
+@@ -6,24 +7,27 @@
+ 6 Still same line.
+ 7 Still same line.
+ 8 Still same line.
+-Start of the new hunk in old version here.
++Start of the new hunk in old version here. - START.
+ 9 Same line.
+ 10 Same line.
+ 11 Same line.
+ Start of the new hunk in new version here.
+ 12 Same line.
+-Deleted version.
++Added line in old version.
+ Deleted line in new version.
+ 13 Same line.
+ Next lines will be added in both versions.
+-Line deleted in both versions.
++Added line in both versions: Different old.
++Added line in both versions: Same.
++Added line in both versions: Different old.
++Added line in old version: Different old.
++Added line in old version: Different old.
+ 14 Same line.
+ 15 Same line.
+ 16 Still same line.
+ 17 Still same line.
+ 18 Same line.
+ 19 Still same line.
+-Also delete this line in old version.
+ 20 Still same line.
+ 21 Same line.
+ 22 Still same line.
+--- inter_a/f9_lot_of_overlapping_hunks.txt
++++ inter_b/f9_lot_of_overlapping_hunks.txt
+@@ -2,6 +2,7 @@
+ Same line.
+ Same line.
+ Same line.
++Add line here.
+ Same line.
+ Same line.
+ Same line.
+@@ -9,6 +10,7 @@
+ Same line.
+ Same line.
+ Same line.
++Add line here.
+ Same line.
+ Same line.
+ Same line.
+@@ -16,6 +18,7 @@
+ Same line.
+ Same line.
+ Same line.
++Add line here.
+ Same line.
+ Same line.
+ Same line.
+@@ -24,8 +27,10 @@
+ Same line.
+ Same line.
+ Same line.
++Add line here.
+ Same line.
+ Same line.
++Add line here.
+ Same line.
+ Same line.
+ Same line.

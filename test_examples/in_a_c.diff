@@ -1,0 +1,74 @@
+Only in inter_a: f1_deleted_in_both_versions.txt
+--- inter_a/f2_deleted_in_olddiff.txt
++++ inter_c/f2_deleted_in_olddiff.txt
+@@ -1 +1,2 @@
+-This file will be deleted in old version.
++This file will be deleted in old version.
++Some change here.
+Only in inter_a: f3_deleted_in_newdiff.txt
+--- inter_a/f4_unchanged_in_olddiff.txt
++++ inter_c/f4_unchanged_in_olddiff.txt
+@@ -1 +1,2 @@
+-Unchanged line in old version.
++Unchanged line in old version.
++Already happened.
+Only in inter_c: f7_new_in_newdiff.txt
+--- inter_a/f8.txt
++++ inter_c/f8.txt
+@@ -10,13 +10,16 @@
+ 9 Same line.
+ 10 Same line.
+ 11 Same line.
+-Start of the new hunk in new version here.
++Start of the new hunk in new version here. - START.
+ 12 Same line.
+ Deleted line in old version.
+-Deleted line in new version.
++Added line in new version.
+ 13 Same line.
+ Next lines will be added in both versions.
+-Line deleted in both versions.
++Added line in both versions: Different new.
++Added line in both versions: Same.
++Added line in both versions: Different new.
+ 14 Same line.
+ 15 Same line.
+ 16 Still same line.
+@@ -33,3 +36,4 @@
+ 33 Some more lines in origin.
+ 34 Some more lines in origin.
+ 35 Some more lines in origin.
++Another hunk in new version.
+--- inter_a/f9_lot_of_overlapping_hunks.txt
++++ inter_c/f9_lot_of_overlapping_hunks.txt
+@@ -6,6 +6,7 @@
+ Same line.
+ Same line.
+ Same line.
++Add line here.
+ Same line.
+ Same line.
+ Same line.
+@@ -13,6 +14,7 @@
+ Same line.
+ Same line.
+ Same line.
++Add line here.
+ Same line.
+ Same line.
+ Same line.
+@@ -20,6 +22,7 @@
+ Same line.
+ Same line.
+ Same line.
++Add line here.
+ Same line.
+ Same line.
+ Same line.
+@@ -27,5 +30,6 @@
+ Same line.
+ Same line.
+ Same line.
++Add line here.
+ Same line.
+ Same line.

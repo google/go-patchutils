@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/sourcegraph/go-diff/diff"
 )
 
@@ -20,55 +21,43 @@ var interDiffFileTests = []struct {
 	wantErr    error
 }{
 	{
-		diffAFile:  "s1_a.diff",
-		diffBFile:  "s1_b.diff",
-		resultFile: "s1_a_b.diff",
+		diffAFile:  "in_a_b.diff",
+		diffBFile:  "in_a_c.diff",
+		resultFile: "in_b_c.diff",
 		wantErr:    nil,
 	},
 	{
-		diffAFile:  "s2_a.diff",
-		diffBFile:  "s2_b.diff",
-		resultFile: "s2_a_b.diff",
+		diffAFile:  "in_a_c.diff",
+		diffBFile:  "in_a_b.diff",
+		resultFile: "in_c_b.diff",
 		wantErr:    nil,
 	},
 	{
-		diffAFile:  "s3_a.diff",
-		diffBFile:  "s3_b.diff",
-		resultFile: "s3_a_b.diff",
-		wantErr:    nil,
-	},
-	{
-		diffAFile:  "f1_a_wrong_origin.diff",
-		diffBFile:  "f1_b.diff",
-		resultFile: "f1_a_c.diff",
+		diffAFile:  "in_a_b_wrong_origin.diff",
+		diffBFile:  "in_a_c.diff",
+		resultFile: "in_b_c.diff",
 		wantErr:    ErrContentMismatch,
 	},
 	{
 		// Not a diff file
-		diffAFile:  "source_1/file_1.txt",
-		diffBFile:  "s2_b.diff",
-		resultFile: "s2_a_b.diff",
+		diffAFile:  "inter_a/f8.txt",
+		diffBFile:  "in_a_c.diff",
+		resultFile: "in_b_c.diff",
 		wantErr:    ErrEmptyDiffFile,
 	},
 	{
-		diffAFile: "s2_a.diff",
+		diffAFile: "in_a_c.diff",
 		// Not a diff file
-		diffBFile:  "source_1/file_2.txt",
-		resultFile: "s2_a_b.diff",
+		diffBFile:  "inter_a/f8.txt",
+		resultFile: "in_c_b.diff",
 		wantErr:    ErrEmptyDiffFile,
 	},
 	{
 		// Empty diff file
 		diffAFile:  "empty.diff",
-		diffBFile:  "s2_b.diff",
-		resultFile: "s2_a_b.diff",
+		diffBFile:  "in_a_c.diff",
+		resultFile: "in_b_c.diff",
 		wantErr:    ErrEmptyDiffFile,
-	},
-	// Contains added/deleted files
-	{
-		diffAFile:  "s1_a_c.diff",
-		diffBFile:  "s1_a_d.diff",
-		resultFile: "s1_c_d.diff",
 	},
 }
 
@@ -79,58 +68,21 @@ var applyDiffFileTests = []struct {
 	wantErr    error
 }{
 	{
-		sourceFile: "source_1/file_1.txt",
-		diffFile:   "f1_a.diff",
-		resultFile: "source_1_a/file_1.txt",
+		sourceFile: "mixed_old_source/f7.txt",
+		diffFile:   "mi_f7_os_ns.diff",
+		resultFile: "mixed_new_source/f7.txt",
 		wantErr:    nil,
 	},
 	{
-		sourceFile: "source_1_a/file_1.txt",
-		diffFile:   "f1_a_c.diff",
-		resultFile: "source_1_c/file_1.txt",
+		sourceFile: "mixed_updated_old_source/f7.txt",
+		diffFile:   "mi_f7_od_nd.diff",
+		resultFile: "mixed_updated_new_source/f7.txt",
 		wantErr:    nil,
 	},
 	{
-		sourceFile: "source_1/file_1.txt",
-		diffFile:   "f1_b.diff",
-		resultFile: "source_1_b/file_1.txt",
-		wantErr:    nil,
-	},
-	{
-		sourceFile: "source_1_b/file_1.txt",
-		diffFile:   "f1_b_c.diff",
-		resultFile: "source_1_c/file_1.txt",
-		wantErr:    nil,
-	},
-	{
-		sourceFile: "source_1/file_2.txt",
-		diffFile:   "f2_a.diff",
-		resultFile: "source_1_a/file_2.txt",
-		wantErr:    nil,
-	},
-	{
-		sourceFile: "source_1_a/file_2.txt",
-		diffFile:   "f2_a_c.diff",
-		resultFile: "source_1_c/file_2.txt",
-		wantErr:    nil,
-	},
-	{
-		sourceFile: "source_1/file_2.txt",
-		diffFile:   "f2_b.diff",
-		resultFile: "source_1_b/file_2.txt",
-		wantErr:    nil,
-	},
-	{
-		sourceFile: "source_1_b/file_2.txt",
-		diffFile:   "f2_b_c.diff",
-		resultFile: "source_1_c/file_2.txt",
-		wantErr:    nil,
-	},
-	// sourceFile and diffFile have different origin content.
-	{
-		sourceFile: "source_1/file_1.txt",
-		diffFile:   "f1_a_wrong_origin.diff",
-		resultFile: "source_1_a/file_1.txt",
+		sourceFile: "mixed_old_source/f7.txt",
+		diffFile:   "mi_f7_os_ns_wrong_origin.diff",
+		resultFile: "mixed_new_source/f7.txt",
 		wantErr:    ErrContentMismatch,
 	},
 }
@@ -143,18 +95,18 @@ var mixedModeFileTests = []struct {
 	resultFile    string
 }{
 	{
-		oldSourceFile: "source_1/file_1.txt",
-		oldDiffFile:   "f1_a.diff",
-		newSourceFile: "source_1_b/file_1.txt",
-		newDiffFile:   "f1_b_c.diff",
-		resultFile:    "f1_a_c.diff",
+		oldSourceFile: "mixed_old_source/f7.txt",
+		oldDiffFile:   "mi_f7_os_od.diff",
+		newSourceFile: "mixed_new_source/f7.txt",
+		newDiffFile:   "mi_f7_ns_nd.diff",
+		resultFile:    "mi_f7_od_nd.diff",
 	},
 	{
-		oldSourceFile: "source_1/file_2.txt",
-		oldDiffFile:   "f2_a.diff",
-		newSourceFile: "source_1_b/file_2.txt",
-		newDiffFile:   "f2_b_c.diff",
-		resultFile:    "f2_a_c.diff",
+		oldSourceFile: "mixed_new_source/f7.txt",
+		oldDiffFile:   "mi_f7_ns_nd.diff",
+		newSourceFile: "mixed_old_source/f7.txt",
+		newDiffFile:   "mi_f7_os_od.diff",
+		resultFile:    "mi_f7_nd_od.diff",
 	},
 }
 
@@ -168,47 +120,37 @@ var mixedModePathFileTests = []struct {
 }{
 	// Files
 	{
-		oldSource:   "source_1/file_1.txt",
-		oldDiffFile: "f1_a.diff",
-		newSource:   "source_1_b/file_1.txt",
-		newDiffFile: "f1_b_c.diff",
-		resultFile:  "f1_a_c.diff",
+		oldSource:   "mixed_old_source/f7.txt",
+		oldDiffFile: "mi_f7_os_od.diff",
+		newSource:   "mixed_new_source/f7.txt",
+		newDiffFile: "mi_f7_ns_nd.diff",
+		resultFile:  "mi_f7_od_nd.diff",
 		wantErr:     false,
 	},
 	{
-		oldSource:   "source_1/file_2.txt",
-		oldDiffFile: "f2_a.diff",
-		newSource:   "source_1_b/file_2.txt",
-		newDiffFile: "f2_b_c.diff",
-		resultFile:  "f2_a_c.diff",
+		oldSource:   "mixed_old_source",
+		oldDiffFile: "mi_os_od.diff",
+		newSource:   "mixed_new_source",
+		newDiffFile: "mi_ns_nd.diff",
+		resultFile:  "mi_od_nd.diff",
 		wantErr:     false,
 	},
-	// Directories
 	{
-		oldSource:   "source_1",
-		oldDiffFile: "s1_a.diff",
-		newSource:   "source_1_b",
-		newDiffFile: "s1_b_c.diff",
-		resultFile:  "s1_a_c.diff",
+		oldSource:   "mixed_new_source",
+		oldDiffFile: "mi_ns_nd.diff",
+		newSource:   "mixed_old_source",
+		newDiffFile: "mi_os_od.diff",
+		resultFile:  "mi_nd_od.diff",
 		wantErr:     false,
 	},
-	// Sources have different modes (file & directory)
+	// File and Directory
 	{
-		oldSource:   "source_1",
-		oldDiffFile: "s1_a.diff",
-		newSource:   "source_1_/file_1.txt",
-		newDiffFile: "f1_a.diff",
-		resultFile:  "s1_a_c.diff",
+		oldSource:   "mixed_old_source/f7.txt",
+		oldDiffFile: "mi_os_od.diff",
+		newSource:   "mixed_new_source",
+		newDiffFile: "mi_ns_nd.diff",
+		resultFile:  "mi_od_nd.diff",
 		wantErr:     true,
-	},
-	// Contains added and unchanged files
-	{
-		oldSource:   "source_1",
-		oldDiffFile: "s1_a.diff",
-		newSource:   "source_1_c",
-		newDiffFile: "s1_c_d.diff",
-		resultFile:  "s1_a_d.diff",
-		wantErr:     false,
 	},
 }
 
@@ -257,9 +199,9 @@ func TestInterDiffMode(t *testing.T) {
 			currentResult, err := InterDiff(readerA, readerB)
 
 			if (tt.wantErr == nil) && (err == nil) {
-				if !bytes.Equal(normalizeNewlines([]byte(currentResult)), normalizeNewlines(correctResult)) {
-					t.Errorf("File contents mismatch for %s.\nExpected:\n%s\nGot:\n%s\n",
-						tt.resultFile, correctResult, currentResult)
+				if d := cmp.Diff(normalizeNewlines(correctResult), normalizeNewlines([]byte(currentResult))); d != "" {
+					t.Errorf("File contents mismatch for %s (-want +got):\n%s",
+						tt.resultFile, d)
 				}
 			} else if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Interdiff mode for %q: got error %v; want error %v", tt.resultFile, err, tt.wantErr)
@@ -293,9 +235,9 @@ func TestApplyDiff(t *testing.T) {
 
 			currentResult, err := applyDiff(string(source), d)
 			if (tt.wantErr == nil) && (err == nil) {
-				if !bytes.Equal(normalizeNewlines([]byte(currentResult)), normalizeNewlines(correctResult)) {
-					t.Errorf("File contents mismatch for %s.\nGot:\n%s\nWant:\n%s\n",
-						tt.resultFile, currentResult, correctResult)
+				if d := cmp.Diff(normalizeNewlines(correctResult), normalizeNewlines([]byte(currentResult))); d != "" {
+					t.Errorf("File contents mismatch for %s (-want +got):\n%s",
+						tt.resultFile, d)
 				}
 			} else if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Applying diff for %q: got error %v; want error %v", tt.resultFile, err, tt.wantErr)
@@ -342,15 +284,19 @@ func TestMixedMode(t *testing.T) {
 				t.Errorf("Error reading resultFile %q", tt.resultFile)
 			}
 
-			currentResult, err := mixedMode(oldSource, newSource, oldD, newD)
-
+			currentDiffResult, err := mixedMode(oldSource, newSource, oldD, newD)
 			if err != nil {
 				t.Errorf("Mixed mode for %q: got error %v; want error nil", tt.resultFile, err)
 			}
+			currentResult, err := diff.PrintFileDiff(currentDiffResult)
+			if err != nil {
+				t.Errorf("printing result diff for file %q: %v",
+					tt.resultFile, err)
+			}
 
-			if !bytes.Equal(normalizeNewlines([]byte(currentResult)), normalizeNewlines(correctResult)) {
-				t.Errorf("File contents mismatch for %s.\nGot:\n%s\nWant:\n%s\n",
-					tt.resultFile, currentResult, correctResult)
+			if d := cmp.Diff(normalizeNewlines(correctResult), normalizeNewlines([]byte(currentResult))); d != "" {
+				t.Errorf("File contents mismatch for %s (-want +got):\n%s",
+					tt.resultFile, d)
 			}
 		})
 	}
@@ -390,9 +336,9 @@ func TestMixedModeFile(t *testing.T) {
 				t.Errorf("Mixed mode for %q: got error %v; want error nil", tt.resultFile, err)
 			}
 
-			if !bytes.Equal(normalizeNewlines([]byte(currentResult)), normalizeNewlines(correctResult)) {
-				t.Errorf("File contents mismatch for %s.\nGot:\n%s\nWant:\n%s\n",
-					tt.resultFile, currentResult, correctResult)
+			if d := cmp.Diff(normalizeNewlines(correctResult), normalizeNewlines([]byte(currentResult))); d != "" {
+				t.Errorf("File contents mismatch for %s (-want +got):\n%s",
+					tt.resultFile, d)
 			}
 		})
 	}
@@ -425,9 +371,9 @@ func TestMixedModePath(t *testing.T) {
 					t.Errorf("MixedModePath for %q: got error %v; want error nil", tt.resultFile, err)
 				}
 
-				if !bytes.Equal(normalizeNewlines([]byte(currentResult)), normalizeNewlines(correctResult)) {
-					t.Errorf("File contents mismatch for %s.\nGot:\n%s\nWant:\n%s\n",
-						tt.resultFile, currentResult, correctResult)
+				if d := cmp.Diff(normalizeNewlines(correctResult), normalizeNewlines([]byte(currentResult))); d != "" {
+					t.Errorf("File contents mismatch for %s (-want +got):\n%s",
+						tt.resultFile, d)
 				}
 			}
 		})

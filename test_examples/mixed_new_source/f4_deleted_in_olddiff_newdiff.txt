@@ -1,0 +1,1 @@
+I'm deleted in OldDiff and NewDiff -- NewSource.

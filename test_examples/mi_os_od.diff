@@ -1,0 +1,25 @@
+--- mixed_old_source/f1_only_in_old_source.txt
++++ mixed_updated_old_source/f1_only_in_old_source.txt
+@@ -1 +1 @@
+-Only in one of the forks -- OldSource.
++Only in one of the forks -- OldDiff.
+Only in mixed_updated_old_source: f2_added_in_old_diff.txt
+Only in mixed_old_source: f3_deleted_in_olddiff.txt
+Only in mixed_old_source: f4_deleted_in_olddiff_newdiff.txt
+--- mixed_old_source/f7.txt
++++ mixed_updated_old_source/f7.txt
+@@ -4,7 +4,7 @@
+ in the sky so high so high,
+ so high so high so high.
+-Barnaby The Bear’s my name, never call me Jack or James,
++Barnaby The Bear’s my name, never call me Jack or James, Barbara,
+ You will sing my way to fame,
+ Barnaby the Bear’s my name.
+ Birds taught me to sing,
+@@ -17,7 +17,6 @@
+ just how easy it can be.
+ Treacle pudding, fish and chips,
+ fizzy drinks and liquorice,
+-flowers, rivers, sand and sea,
+ snowflakes and the stars are free.
+ Every day and night,

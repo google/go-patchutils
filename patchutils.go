@@ -38,6 +38,12 @@ func InterDiff(oldDiff, newDiff io.Reader) (string, error) {
 	}
 
 	resultFiles := make(map[string]string)
+	sort.SliceStable(oldFileDiffs, func(i, j int) bool {
+		return oldFileDiffs[i].OrigName < oldFileDiffs[j].OrigName
+	})
+	sort.SliceStable(newFileDiffs, func(i, j int) bool {
+		return newFileDiffs[i].OrigName < newFileDiffs[j].OrigName
+	})
 	// Iterate over files in FileDiff arrays
 	i, j := 0, 0
 	eg, _ := errgroup.WithContext(context.Background())
@@ -47,7 +53,7 @@ Loop:
 		case oldFileDiffs[i].OrigName == newFileDiffs[j].OrigName:
 			switch {
 			case oldFileDiffs[i].NewName == "" && newFileDiffs[j].NewName == "":
-				// In both versions file has been added/deleted
+				// In both versions file has been deleted
 				i++
 				j++
 				continue Loop
@@ -144,28 +150,27 @@ Loop:
 
 // mixedMode computes the diff of a oldSource file patched with oldDiff
 // and the newSource file patched with newDiff.
-// Check if files are added/deleted in old/new versions is skipped.
-func mixedMode(oldSource, newSource io.Reader, oldFileDiff, newFileDiff *diff.FileDiff) (string, error) {
+func mixedMode(oldSource, newSource io.Reader, oldFileDiff, newFileDiff *diff.FileDiff) (*diff.FileDiff, error) {
 	// Skip check if in some version the file has been added/deleted as this is already done in MixedModeFilePath,
 	// before opening oldSource and newSource files
 	oldSourceContent, err := readContent(oldSource)
 	if err != nil {
-		return "", fmt.Errorf("reading content of OldSource: %w", err)
+		return nil, fmt.Errorf("reading content of OldSource: %w", err)
 	}
 
 	newSourceContent, err := readContent(newSource)
 	if err != nil {
-		return "", fmt.Errorf("reading content of NewSource: %w", err)
+		return nil, fmt.Errorf("reading content of NewSource: %w", err)
 	}
 
 	updatedOldSource, err := applyDiff(oldSourceContent, oldFileDiff)
 	if err != nil {
-		return "", fmt.Errorf("applying diff to OldSource: %w", err)
+		return nil, fmt.Errorf("applying diff to OldSource: %w", err)
 	}
 
 	updatedNewSource, err := applyDiff(newSourceContent, newFileDiff)
 	if err != nil {
-		return "", fmt.Errorf("applying diff to NewSource: %w", err)
+		return nil, fmt.Errorf("applying diff to NewSource: %w", err)
 	}
 
 	ch := dbd.DiffChunks(strings.Split(strings.TrimSuffix(updatedOldSource, "\n"), "\n"),
@@ -173,22 +178,21 @@ func mixedMode(oldSource, newSource io.Reader, oldFileDiff, newFileDiff *diff.Fi
 
 	// TODO: something with extended (extended header lines)
 	resultFileDiff := &diff.FileDiff{
-		OrigName: oldFileDiff.NewName,
-		OrigTime: oldFileDiff.NewTime,
-		NewName:  newFileDiff.NewName,
-		NewTime:  newFileDiff.NewTime,
 		Extended: []string{},
 		Hunks:    []*diff.Hunk{},
 	}
-
-	convertChunksIntoFileDiff(ch, resultFileDiff)
-	result, err := diff.PrintFileDiff(resultFileDiff)
-	if err != nil {
-		return "", fmt.Errorf("printing result diff for file %q: %w",
-			oldFileDiff.NewName, err)
+	if oldFileDiff != nil {
+		resultFileDiff.OrigName = oldFileDiff.NewName
+		resultFileDiff.OrigTime = oldFileDiff.NewTime
+	}
+	if newFileDiff != nil {
+		resultFileDiff.NewName = newFileDiff.NewName
+		resultFileDiff.NewTime = newFileDiff.NewTime
 	}
 
-	return string(result), nil
+	convertChunksIntoFileDiff(ch, resultFileDiff)
+
+	return resultFileDiff, nil
 }
 
 // MixedModeFile computes the diff of an oldSource file patched with oldDiff and
@@ -204,12 +208,17 @@ func MixedModeFile(oldSource, newSource, oldDiff, newDiff io.Reader) (string, er
 		return "", fmt.Errorf("parsing newDiff: %w", err)
 	}
 
-	result, err := mixedMode(oldSource, newSource, oldD, newD)
+	resultFileDiff, err := mixedMode(oldSource, newSource, oldD, newD)
 	if err != nil {
 		return "", fmt.Errorf("mixedMode: %w", err)
 	}
+	result, err := diff.PrintFileDiff(resultFileDiff)
+	if err != nil {
+		return "", fmt.Errorf("printing result diff for file %q: %w",
+			resultFileDiff.OrigName, err)
+	}
 
-	return result, nil
+	return string(result), nil
 }
 
 // MixedModePath recursively computes the diff of an oldSource patched with oldDiff
@@ -283,6 +292,9 @@ func readContent(source io.Reader) (string, error) {
 
 // applyDiff returns applied changes from diffFile to source
 func applyDiff(source string, diffFile *diff.FileDiff) (string, error) {
+	if diffFile == nil {
+		return source, nil
+	}
 	sourceBody := strings.Split(source, "\n")
 
 	// currentOrgSourceI = 1 -- In diff lines started counting from 1
@@ -297,10 +309,6 @@ func applyDiff(source string, diffFile *diff.FileDiff) (string, error) {
 		hunkBody := strings.Split(strings.TrimSuffix(string(hunk.Body), "\n"), "\n")
 
 		for _, line := range hunkBody {
-			if currentOrgSourceI > int32(len(sourceBody)) {
-				return "", errors.New("diff content is out of source content")
-			}
-
 			if strings.HasPrefix(line, "+") {
 				newBody = append(newBody, line[1:])
 			} else {
@@ -327,19 +335,27 @@ func applyDiff(source string, diffFile *diff.FileDiff) (string, error) {
 // mixedModeFilePath computes the diff of a oldSourcePath file patched with oldFileDiff
 // and the newSourcePath file patched with newFileDiff.
 func mixedModeFilePath(oldSourcePath, newSourcePath string, oldFileDiff, newFileDiff *diff.FileDiff) (string, error) {
-	if oldFileDiff.OrigName != "" && oldFileDiff.NewName == "" && newFileDiff.OrigName != "" && newFileDiff.NewName == "" {
+	if oldFileDiff != nil && oldFileDiff.NewName == "" && newFileDiff != nil && newFileDiff.NewName == "" {
 		// In both updated version file has been deleted
 		return "", nil
 	}
 
-	if oldFileDiff.OrigName != "" && oldFileDiff.NewName == "" {
+	if oldFileDiff != nil && oldFileDiff.OrigName != "" && oldFileDiff.NewName == "" {
 		// File has been deleted in updated old version
+		if newFileDiff == nil {
+			return fmt.Sprintf("Only in %s: %s\n", newSourcePath,
+				filepath.Base(oldFileDiff.NewName)), nil
+		}
 		return fmt.Sprintf("Only in %s: %s\n", filepath.Dir(newFileDiff.NewName),
 			filepath.Base(newFileDiff.NewName)), nil
 	}
 
-	if newFileDiff.OrigName != "" && newFileDiff.NewName == "" {
+	if newFileDiff != nil && newFileDiff.OrigName != "" && newFileDiff.NewName == "" {
 		// File has been deleted in updated new version
+		if oldFileDiff == nil {
+			return fmt.Sprintf("Only in %s: %s\n", oldSourcePath,
+				filepath.Base(newFileDiff.NewName)), nil
+		}
 		return fmt.Sprintf("Only in %s: %s\n", filepath.Dir(oldFileDiff.NewName),
 			filepath.Base(oldFileDiff.NewName)), nil
 	}
@@ -356,13 +372,24 @@ func mixedModeFilePath(oldSourcePath, newSourcePath string, oldFileDiff, newFile
 			newSourcePath, err)
 	}
 
-	resultString, err := mixedMode(oldSourceFile, newSourceFile, oldFileDiff, newFileDiff)
+	resultFileDiff, err := mixedMode(oldSourceFile, newSourceFile, oldFileDiff, newFileDiff)
 	if err != nil {
-		return "", fmt.Errorf("compute diff for %q: %w",
-			oldFileDiff.OrigName, err)
+		return "", fmt.Errorf("compute diff for %q and %q: %w",
+			oldSourcePath, newSourcePath, err)
+	}
+	if oldFileDiff == nil {
+		resultFileDiff.OrigName = oldSourcePath
+	}
+	if newFileDiff == nil {
+		resultFileDiff.NewName = newSourcePath
+	}
+	result, err := diff.PrintFileDiff(resultFileDiff)
+	if err != nil {
+		return "", fmt.Errorf("printing result diff for file %q: %w",
+			resultFileDiff.OrigName, err)
 	}
 
-	return resultString, nil
+	return string(result), nil
 }
 
 // mixedModeDirPath computes the diff of a oldSourcePath directory patched with oldDiff
@@ -381,207 +408,126 @@ func mixedModeDirPath(oldSourcePath, newSourcePath string, oldDiff, newDiff io.R
 	oldFileDiffReader := diff.NewMultiFileDiffReader(oldDiff)
 	newFileDiffReader := diff.NewMultiFileDiffReader(newDiff)
 
-	lastOldFileDiff, err := oldFileDiffReader.ReadFile()
-	if err != nil && !errors.Is(err, io.EOF) {
+	oldFileDiffArr, err := oldFileDiffReader.ReadAllFiles()
+	if err != nil {
 		return "", fmt.Errorf("parsing next FileDiff in oldDiff: %w", err)
 	}
+	oldFileDiffs := make(map[string]diff.FileDiff)
+	for _, d := range oldFileDiffArr {
+		oldFileDiffs[d.OrigName] = *d
+	}
 
-	lastNewFileDiff, err := newFileDiffReader.ReadFile()
-	if err != nil && !errors.Is(err, io.EOF) {
+	newFileDiffArr, err := newFileDiffReader.ReadAllFiles()
+	if err != nil {
 		return "", fmt.Errorf("parsing next FileDiff in newDiff: %w", err)
+	}
+	newFileDiffs := make(map[string]diff.FileDiff)
+	for _, d := range newFileDiffArr {
+		newFileDiffs[d.OrigName] = *d
 	}
 
 	result := ""
-	updateOldDiff, updateNewDiff := false, false
-	onlyOldFile, onlyNewFile := false, false
 
 	// Iterate over files in FileDiff arrays
 	i, j := 0, 0
-	for i < len(oldFileNames) || j < len(newFileNames) {
-		if lastOldFileDiff != nil && i < len(oldFileNames) && oldFileNames[i] > lastOldFileDiff.OrigName {
-			if lastOldFileDiff.NewName != "" {
-				return "", fmt.Errorf("oldFileDiff: %q doesn't have relative file in oldSource",
-					lastOldFileDiff.OrigName)
-			}
-			// File has been added in old version
-			result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(lastOldFileDiff.OrigName),
-				filepath.Base(lastOldFileDiff.OrigName))
+	var currentOldDiff, currentNewDiff *diff.FileDiff
+	for i < len(oldFileNames) && j < len(newFileNames) {
+		// Check if there is correspondent oldFileDiff to current olfFile
+		if d, ok := oldFileDiffs[oldFileNames[i]]; ok && currentOldDiff == nil {
+			currentOldDiff = &d
+			delete(oldFileDiffs, oldFileNames[i])
 		}
-
-		if lastNewFileDiff != nil && j < len(newFileNames) && newFileNames[j] > lastNewFileDiff.OrigName {
-			if lastNewFileDiff.NewName != "" {
-				return "", fmt.Errorf("newFileDiff: %q doesn't have relative file in newSource",
-					lastNewFileDiff.OrigName)
-			}
-			// File has been added in new version
-			result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(lastNewFileDiff.OrigName),
-				filepath.Base(lastNewFileDiff.OrigName))
+		// Check if there is correspondent newFileDiff to current newFile
+		if d, ok := newFileDiffs[newFileNames[j]]; ok && currentNewDiff == nil {
+			currentNewDiff = &d
+			delete(newFileDiffs, newFileNames[j])
 		}
-
 		switch {
-		case i < len(oldFileNames) && j < len(newFileNames):
-			switch {
-			// Comparing parts after oldSourcePath and newSourcePath
-			case strings.TrimPrefix(oldFileNames[i], oldSourcePath) == strings.TrimPrefix(newFileNames[j], newSourcePath):
-				switch {
-				case lastOldFileDiff != nil && lastNewFileDiff != nil &&
-					oldFileNames[i] == lastOldFileDiff.OrigName && newFileNames[j] == lastNewFileDiff.OrigName:
-					// Both oldFile and newFile have updates
-					currentResult, err := mixedModeFilePath(oldFileNames[i], newFileNames[j], lastOldFileDiff, lastNewFileDiff)
-					if err != nil {
-						return "", fmt.Errorf("mixedModeFilePath for oldFile: %q and newFile: %q: %w",
-							oldFileNames[i], newFileNames[j], err)
-					}
-					result += currentResult
-
-					updateOldDiff = true
-					updateNewDiff = true
-
-				case lastOldFileDiff != nil && oldFileNames[i] == lastOldFileDiff.OrigName:
-					// Only oldFile has updates
-					// Empty FileDiff instead of lastNewFileDiff
-					currentResult, err := mixedModeFilePath(oldFileNames[i], newFileNames[j], lastOldFileDiff, &diff.FileDiff{})
-					if err != nil {
-						return "", fmt.Errorf("mixedModeFilePath for oldFile: %q and newFile: %q: %w",
-							oldFileNames[i], newFileNames[j], err)
-					}
-					result += currentResult
-
-					updateOldDiff = true
-
-				case lastNewFileDiff != nil && newFileNames[j] == lastNewFileDiff.OrigName:
-					// Only newFile has updates
-					// Empty FileDiff instead of lastOldFileDiff
-					currentResult, err := mixedModeFilePath(oldFileNames[i], newFileNames[j], &diff.FileDiff{}, lastNewFileDiff)
-					if err != nil {
-						return "", fmt.Errorf("mixedModeFilePath for oldFile: %q and newFile: %q: %w",
-							oldFileNames[i], newFileNames[j], err)
-					}
-					result += currentResult
-
-					updateNewDiff = true
-
-				default:
-					// None of oldFile and newFile have updates
-					currentResult, err := mixedModeFilePath(oldFileNames[i], newFileNames[j], &diff.FileDiff{}, &diff.FileDiff{})
-					if err != nil {
-						return "", fmt.Errorf("mixedModeFilePath for oldFile: %q and newFile: %q: %w",
-							oldFileNames[i], newFileNames[j], err)
-					}
-					result += currentResult
-				}
-				i++
-				j++
-			case strings.TrimPrefix(oldFileNames[i], oldSourcePath) < strings.TrimPrefix(newFileNames[j], newSourcePath):
-				onlyOldFile = true
-			default:
-				onlyNewFile = true
+		// Comparing parts after oldSourcePath and newSourcePath
+		case strings.TrimPrefix(oldFileNames[i], oldSourcePath) == strings.TrimPrefix(newFileNames[j], newSourcePath):
+			currentResult, err := mixedModeFilePath(oldFileNames[i], newFileNames[j], currentOldDiff, currentNewDiff)
+			if err != nil {
+				return "", fmt.Errorf("mixedModeFilePath for oldFile: %q and newFile: %q: %w",
+					oldFileNames[i], newFileNames[j], err)
 			}
-		case i < len(oldFileNames):
-			// In case there are more oldFileDiffs, while newFileDiffs are run out
-			onlyOldFile = true
-		default:
-			// In case there are more newFileDiffs, while oldFileDiffs are run out
-			onlyNewFile = true
-		}
-
-		if onlyOldFile {
-			// mark to update oldFileDiff if last one was related to current oldFile
-			if lastOldFileDiff != nil && oldFileNames[i] == lastOldFileDiff.OrigName {
-				updateOldDiff = true
-				// If file was deleted in oldFileDiff, don't add "Only in" message later
-				if lastOldFileDiff.NewName == "" {
-					onlyOldFile = false
+			result += currentResult
+			i++
+			j++
+			currentOldDiff = nil
+			currentNewDiff = nil
+		case strings.TrimPrefix(oldFileNames[i], oldSourcePath) < strings.TrimPrefix(newFileNames[j], newSourcePath):
+			if currentOldDiff != nil {
+				if currentOldDiff.NewName != "" {
+					// File wasn't deleted in oldDiff
+					result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(currentOldDiff.NewName),
+						filepath.Base(currentOldDiff.NewName))
 				}
-			}
-			if onlyOldFile {
+			} else {
 				result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(oldFileNames[i]),
 					filepath.Base(oldFileNames[i]))
 			}
 			i++
-			onlyOldFile = false
-		}
-
-		if onlyNewFile {
-			// mark to update newFileDiff if last one was related to current newFile
-			if lastNewFileDiff != nil && newFileNames[j] == lastNewFileDiff.OrigName {
-				updateNewDiff = true
-				// If file was deleted in newFileDiff, don't add "Only in" message later
-				if lastNewFileDiff.NewName == "" {
-					onlyNewFile = true
+			currentOldDiff = nil
+		default:
+			if currentNewDiff != nil {
+				if currentNewDiff.NewName != "" {
+					// File wasn't deleted in newDiff
+					result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(currentNewDiff.NewName),
+						filepath.Base(currentNewDiff.NewName))
 				}
-			}
-			if onlyNewFile {
+			} else {
 				result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(newFileNames[j]),
 					filepath.Base(newFileNames[j]))
 			}
 			j++
-			onlyNewFile = false
-		}
-
-		if updateOldDiff {
-			// get next lastOldFileDiff
-			lastOldFileDiff, err = oldFileDiffReader.ReadFile()
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					return "", fmt.Errorf("parsing next FileDiff in oldDiff: %w", err)
-				}
-				lastOldFileDiff = nil
-			}
-			updateOldDiff = false
-		}
-
-		if updateNewDiff {
-			// get next lastNewFileDiff
-			lastNewFileDiff, err = newFileDiffReader.ReadFile()
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					return "", fmt.Errorf("parsing next FileDiff in newDiff: %w", err)
-				}
-				lastNewFileDiff = nil
-			}
-			updateNewDiff = false
+			currentNewDiff = nil
 		}
 	}
 
-	// Check if more files have been added in old version
-	for lastOldFileDiff != nil {
-		if lastOldFileDiff.NewName != "" {
-			return "", fmt.Errorf("oldFileDiff: %q doesn't have relative file in oldSource",
-				lastOldFileDiff.OrigName)
-		}
-		// File has been added
-		result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(lastOldFileDiff.OrigName),
-			filepath.Base(lastOldFileDiff.OrigName))
-
-		// Update lastOldFileDiff
-		lastOldFileDiff, err = oldFileDiffReader.ReadFile()
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				return "", fmt.Errorf("parsing next FileDiff in oldDiff: %w", err)
+	// Iterate over oldFiles, while we run out of newFiles
+	for i < len(oldFileNames) {
+		// Check if there is correspondent oldFileDiff to current olfFile
+		if d, ok := oldFileDiffs[oldFileNames[i]]; ok {
+			delete(oldFileDiffs, oldFileNames[i])
+			if d.NewName != "" {
+				// File hasn't been deleted
+				result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(oldFileNames[i]),
+					filepath.Base(oldFileNames[i]))
 			}
-			lastOldFileDiff = nil
+		} else {
+			result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(oldFileNames[i]),
+				filepath.Base(oldFileNames[i]))
 		}
+		i++
 	}
 
-	// Check if more files have been added in new version
-	for lastNewFileDiff != nil {
-		if lastNewFileDiff.NewName != "" {
-			return "", fmt.Errorf("newFileDiff: %q doesn't have relative file in newSource",
-				lastNewFileDiff.OrigName)
-		}
-		// File has been added
-		result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(lastNewFileDiff.OrigName),
-			filepath.Base(lastNewFileDiff.OrigName))
-
-		// Update lastNewFileDiff
-		lastNewFileDiff, err = newFileDiffReader.ReadFile()
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				return "", fmt.Errorf("parsing next FileDiff in newDiff: %w", err)
+	// Iterate over newFiles, while we run out of oldFiles
+	for j < len(newFileNames) {
+		// Check if there is correspondent oldFileDiff to current olfFile
+		if d, ok := newFileDiffs[newFileNames[j]]; ok {
+			delete(newFileDiffs, newFileNames[j])
+			if d.NewName != "" {
+				// File hasn't been deleted
+				result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(newFileNames[j]),
+					filepath.Base(newFileNames[j]))
 			}
-			lastNewFileDiff = nil
+		} else {
+			result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(newFileNames[j]),
+				filepath.Base(newFileNames[j]))
 		}
+		j++
+	}
+
+	// New files have been added to the old version
+	for filename, _ := range oldFileDiffs {
+		result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(filename),
+			filepath.Base(filename))
+	}
+
+	// New files have been added to the new version
+	for filename, _ := range oldFileDiffs {
+		result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(filename),
+			filepath.Base(filename))
 	}
 
 	return result, nil
@@ -773,7 +719,7 @@ func interFileDiff(oldFileDiff, newFileDiff *diff.FileDiff) (*diff.FileDiff, err
 		case oldFileDiff.Hunks[i].OrigStartLine+oldFileDiff.Hunks[i].OrigLines < newFileDiff.Hunks[j].OrigStartLine:
 			// Whole oldHunk is before starting of newHunk
 			resultFileDiff.Hunks = append(resultFileDiff.Hunks,
-				revertedHunkBody(oldFileDiff.Hunks[i]))
+				revertedHunk(oldFileDiff.Hunks[i]))
 			i++
 		case newFileDiff.Hunks[j].OrigStartLine+newFileDiff.Hunks[j].OrigLines < oldFileDiff.Hunks[i].OrigStartLine:
 			// Whole newHunk is before starting of oldHunk
@@ -799,7 +745,7 @@ func interFileDiff(oldFileDiff, newFileDiff *diff.FileDiff) (*diff.FileDiff, err
 	// In case there are more hunks in oldFileDiff, while hunks of newFileDiff are run out
 	for i < len(oldFileDiff.Hunks) {
 		resultFileDiff.Hunks = append(resultFileDiff.Hunks,
-			revertedHunkBody(oldFileDiff.Hunks[i]))
+			revertedHunk(oldFileDiff.Hunks[i]))
 		i++
 	}
 
@@ -1062,15 +1008,15 @@ func configureResultHunk(oldHunks, newHunks []*diff.Hunk) (*diff.Hunk, int32, er
 	return resultHunk, currentOrgI, nil
 }
 
-// revertHunks reverts each hunk body in hunks in diffFile
+// revertHunks reverts each hunk body and swaps values of start and number of lines in hunks in diffFile
 func revertHunks(diffFile *diff.FileDiff) {
-	for k, h := range diffFile.Hunks {
-		diffFile.Hunks[k] = revertedHunkBody(h)
+	for i, h := range diffFile.Hunks {
+		diffFile.Hunks[i] = revertedHunk(h)
 	}
 }
 
-// revertedHunkBody returns a copy of hunk with reverted lines of Body.
-func revertedHunkBody(hunk *diff.Hunk) *diff.Hunk {
+// revertedHunk returns a copy of hunk with reverted lines of Body.
+func revertedHunk(hunk *diff.Hunk) *diff.Hunk {
 	var newBody []string
 
 	lines := strings.Split(string(hunk.Body), "\n")
@@ -1080,11 +1026,11 @@ func revertedHunkBody(hunk *diff.Hunk) *diff.Hunk {
 	}
 
 	revertedHunk := &diff.Hunk{
-		OrigStartLine:   hunk.OrigStartLine,
-		OrigLines:       hunk.OrigLines,
+		OrigStartLine:   hunk.NewStartLine,
+		OrigLines:       hunk.NewLines,
 		OrigNoNewlineAt: hunk.OrigNoNewlineAt,
-		NewStartLine:    hunk.NewStartLine,
-		NewLines:        hunk.NewLines,
+		NewStartLine:    hunk.OrigStartLine,
+		NewLines:        hunk.OrigLines,
 		Section:         hunk.Section,
 		StartPosition:   hunk.StartPosition,
 		Body:            []byte(strings.Join(newBody, "\n") + "\n"),

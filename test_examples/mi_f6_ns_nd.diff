@@ -1,0 +1,11 @@
+--- mixed_new_source/f6_no_changes_to_olddiff.txt	2020-10-30 11:12:55.930741891 +0000
++++ mixed_updated_new_source/f6_no_changes_to_olddiff.txt	2020-10-30 11:32:22.322300642 +0000
+@@ -12,4 +12,5 @@
+ Ah-ah-ah-ah-ah… some day we will find The Cities of Gold.
+ Do-do-do-do ah-ah-ah, do-do-do-do, Cities of Gold.
+ Do-do-do-do, Cities of Gold. Ah-ah-ah-ah-ah…
+-some day we will find The Cities of Gold.
+\ No newline at end of file
++some day we will find The Cities of Gold.
++some day we will find The Cities of Silver.
+\ No newline at end of file
