@@ -519,13 +519,13 @@ func mixedModeDirPath(oldSourcePath, newSourcePath string, oldDiff, newDiff io.R
 	}
 
 	// New files have been added to the old version
-	for filename, _ := range oldFileDiffs {
+	for filename := range oldFileDiffs {
 		result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(filename),
 			filepath.Base(filename))
 	}
 
 	// New files have been added to the new version
-	for filename, _ := range oldFileDiffs {
+	for filename := range oldFileDiffs {
 		result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(filename),
 			filepath.Base(filename))
 	}
