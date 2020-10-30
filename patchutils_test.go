@@ -40,7 +40,7 @@ var interDiffFileTests = []struct {
 	},
 	{
 		// Not a diff file
-		diffAFile:  "inter_a/f8.txt",
+		diffAFile:  "mixed_old_source/f7.txt",
 		diffBFile:  "in_a_c.diff",
 		resultFile: "in_b_c.diff",
 		wantErr:    ErrEmptyDiffFile,
@@ -48,7 +48,7 @@ var interDiffFileTests = []struct {
 	{
 		diffAFile: "in_a_c.diff",
 		// Not a diff file
-		diffBFile:  "inter_a/f8.txt",
+		diffBFile:  "mixed_old_source/f7.txt",
 		resultFile: "in_c_b.diff",
 		wantErr:    ErrEmptyDiffFile,
 	},
