@@ -241,7 +241,7 @@ func MixedModePath(oldSourcePath, newSourcePath string, oldDiff, newDiff io.Read
 	switch {
 	case !oldSourceStat.IsDir() && !newSourceStat.IsDir():
 		// Both sources are files
-		oldDiffs, err := diff.NewFileDiffReader(oldDiff).ReadAllFiles()
+		oldDiffs, err := diff.NewMultiFileDiffReader(oldDiff).ReadAllFiles()
 		if err != nil {
 			return "", fmt.Errorf("parsing oldDiff for %q: %w",
 				oldSourcePath, err)
@@ -255,7 +255,7 @@ func MixedModePath(oldSourcePath, newSourcePath string, oldDiff, newDiff io.Read
 			}
 		}
 		
-		newDiffs, err := diff.NewFileDiffReader(newDiff).ReadAllFiles()
+		newDiffs, err := diff.NewMultiFileDiffReader(newDiff).ReadAllFiles()
 		if err != nil {
 			return "", fmt.Errorf("parsing newDiff for %q: %w",
 				newSourcePath, err)
