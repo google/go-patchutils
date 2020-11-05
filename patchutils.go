@@ -241,34 +241,34 @@ func MixedModePath(oldSourcePath, newSourcePath string, oldDiff, newDiff io.Read
 	switch {
 	case !oldSourceStat.IsDir() && !newSourceStat.IsDir():
 		// Both sources are files
-		oldD, err := diff.NewFileDiffReader(oldDiff).Read()
+		oldDiffs, err := diff.NewFileDiffReader(oldDiff).ReadAllFiles()
 		if err != nil {
-			if !errors.Is(err, io.EOF){
-				return "", fmt.Errorf("parsing oldDiff for %q: %w",
-					oldSourcePath, err)
+			return "", fmt.Errorf("parsing oldDiff for %q: %w",
+				oldSourcePath, err)
+		}
+		oldD = nil
+		if len(oldDiffs) > 0 {
+			oldD = oldDiffs[0]
+			if oldSourcePath != oldD.OrigName {
+				return "", fmt.Errorf("filenames mismatch for oldSourcePath: %q and oldDiff: %q",
+					oldSourcePath, oldD.OrigName)
 			}
-			oldD = nil
 		}
-
-		if oldSourcePath != oldD.OrigName {
-			return "", fmt.Errorf("filenames mismatch for oldSourcePath: %q and oldDiff: %q",
-				oldSourcePath, oldD.OrigName)
-		}
-
-		newD, err := diff.NewFileDiffReader(newDiff).Read()
+		
+		newDiffs, err := diff.NewFileDiffReader(newDiff).ReadAllFiles()
 		if err != nil {
-			if !errors.Is(err, io.EOF){
-				return "", fmt.Errorf("parsing newDiff for %q: %w",
-					newSourcePath, err)
+			return "", fmt.Errorf("parsing newDiff for %q: %w",
+				newSourcePath, err)
+		}
+		newD = nil
+		if len(newDiffs) > 0 {
+			newD = newDiffs[0]
+			if newSourcePath != newD.OrigName {
+				return "", fmt.Errorf("filenames mismatch for newSourcePath: %q and newDiff: %q",
+					newSourcePath, newD.OrigName)
 			}
-			newD = nil
 		}
-
-		if newSourcePath != newD.OrigName {
-			return "", fmt.Errorf("filenames mismatch for newSourcePath: %q and newDiff: %q",
-				newSourcePath, newD.OrigName)
-		}
-
+		
 		resultString, err := mixedModeFilePath(oldSourcePath, newSourcePath, oldD, newD)
 		return resultString, err
 
