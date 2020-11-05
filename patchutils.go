@@ -243,8 +243,11 @@ func MixedModePath(oldSourcePath, newSourcePath string, oldDiff, newDiff io.Read
 		// Both sources are files
 		oldD, err := diff.NewFileDiffReader(oldDiff).Read()
 		if err != nil {
-			return "", fmt.Errorf("parsing oldDiff for %q: %w",
-				oldSourcePath, err)
+			if !errors.Is(err, io.EOF){
+				return "", fmt.Errorf("parsing oldDiff for %q: %w",
+					oldSourcePath, err)
+			}
+			oldD = nil
 		}
 
 		if oldSourcePath != oldD.OrigName {
@@ -254,8 +257,11 @@ func MixedModePath(oldSourcePath, newSourcePath string, oldDiff, newDiff io.Read
 
 		newD, err := diff.NewFileDiffReader(newDiff).Read()
 		if err != nil {
-			return "", fmt.Errorf("parsing newDiff for %q: %w",
-				newSourcePath, err)
+			if !errors.Is(err, io.EOF){
+				return "", fmt.Errorf("parsing newDiff for %q: %w",
+					newSourcePath, err)
+			}
+			newD = nil
 		}
 
 		if newSourcePath != newD.OrigName {
