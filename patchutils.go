@@ -312,6 +312,9 @@ func applyDiff(source string, diffFile *diff.FileDiff) (string, error) {
 			if strings.HasPrefix(line, "+") {
 				newBody = append(newBody, line[1:])
 			} else {
+				if currentOrgSourceI > int32(len(sourceBody)) {				
+					return "", errors.New("diff content is out of source content")
+				}
 				if line[1:] != sourceBody[currentOrgSourceI-1] {
 					return "", fmt.Errorf(
 						"line %d in source (%q) and diff (%q): %w",
