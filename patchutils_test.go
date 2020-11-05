@@ -128,6 +128,14 @@ var mixedModePathFileTests = []struct {
 		wantErr:     false,
 	},
 	{
+		oldSource:   "mixed_old_source/f6_no_changes_to_olddiff.txt",
+		oldDiffFile: "mi_f6_os_od.diff",
+		newSource:   "mixed_new_source/f6_no_changes_to_olddiff.txt",
+		newDiffFile: "mi_f6_ns_nd.diff",
+		resultFile:  "mi_f6_od_nd.diff",
+		wantErr:     false,
+	},
+	{
 		oldSource:   "mixed_old_source",
 		oldDiffFile: "mi_os_od.diff",
 		newSource:   "mixed_new_source",
