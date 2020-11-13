@@ -254,7 +254,7 @@ func MixedModePath(oldSourcePath, newSourcePath string, oldDiff, newDiff io.Read
 					oldSourcePath, oldD.OrigName)
 			}
 		}
-		
+
 		newDiffs, err := diff.NewMultiFileDiffReader(newDiff).ReadAllFiles()
 		if err != nil {
 			return "", fmt.Errorf("parsing newDiff for %q: %w",
@@ -268,7 +268,7 @@ func MixedModePath(oldSourcePath, newSourcePath string, oldDiff, newDiff io.Read
 					newSourcePath, newD.OrigName)
 			}
 		}
-		
+
 		resultString, err := mixedModeFilePath(oldSourcePath, newSourcePath, oldD, newD)
 		return resultString, err
 
@@ -318,7 +318,7 @@ func applyDiff(source string, diffFile *diff.FileDiff) (string, error) {
 			if strings.HasPrefix(line, "+") {
 				newBody = append(newBody, line[1:])
 			} else {
-				if currentOrgSourceI > int32(len(sourceBody)) {				
+				if currentOrgSourceI > int32(len(sourceBody)) {
 					return "", errors.New("diff content is out of source content")
 				}
 				if line[1:] != sourceBody[currentOrgSourceI-1] {
@@ -534,7 +534,7 @@ func mixedModeDirPath(oldSourcePath, newSourcePath string, oldDiff, newDiff io.R
 	}
 
 	// New files have been added to the new version
-	for filename := range oldFileDiffs {
+	for filename := range newFileDiffs {
 		result += fmt.Sprintf("Only in %s: %s\n", filepath.Dir(filename),
 			filepath.Base(filename))
 	}
@@ -570,18 +570,18 @@ func convertChunksIntoFileDiff(chunks []dbd.Chunk, fileDiff *diff.FileDiff) {
 		NewStartLine:  currentNewI,
 	}
 	// Delete empty chunks in the beginning
-	for len(chunks) > 0 && len(chunks[0].Added) == 0 && len(chunks[0].Deleted) == 0 && len(chunks[0].Equal) == 0 {
+	for len(chunks) > 0 && chunks[0].Added == nil && chunks[0].Deleted == nil && chunks[0].Equal == nil {
 		chunks = chunks[1:]
 	}
 	// Delete empty chunks in the end
 	last := len(chunks) - 1
-	for len(chunks) > 0 && len(chunks[last].Added) == 0 && len(chunks[last].Deleted) == 0 && len(chunks[last].Equal) == 0 {
+	for len(chunks) > 0 && chunks[last].Added == nil && chunks[last].Deleted == nil && chunks[last].Equal == nil {
 		chunks = chunks[:last]
 		last--
 	}
 
 	// If chunks contains only one element with only unchanged lines
-	if len(chunks) == 1 && len(chunks[0].Added) == 0 && len(chunks[0].Deleted) == 0 {
+	if len(chunks) == 1 && chunks[0].Added == nil && chunks[0].Deleted == nil {
 		return
 	}
 
@@ -593,7 +593,7 @@ func convertChunksIntoFileDiff(chunks []dbd.Chunk, fileDiff *diff.FileDiff) {
 	}
 
 	// If first chunk contains only equal lines, we are adding last contextLines to currentHunk
-	if len(chunks[0].Added) == 0 && len(chunks[0].Deleted) == 0 {
+	if chunks[0].Added == nil && chunks[0].Deleted == nil {
 		currentOldI += int32(len(chunks[0].Equal))
 		currentNewI += int32(len(chunks[0].Equal))
 		if len(chunks[0].Equal) > contextLines {
@@ -625,7 +625,7 @@ func convertChunksIntoFileDiff(chunks []dbd.Chunk, fileDiff *diff.FileDiff) {
 			}
 		}
 		// Removing processed equal lines from last chunk
-		chunks[last].Equal = []string{}
+		chunks[last].Equal = nil
 	}
 
 	for _, c := range chunks {
@@ -646,8 +646,8 @@ func convertChunksIntoFileDiff(chunks []dbd.Chunk, fileDiff *diff.FileDiff) {
 				for _, line := range c.Equal[:contextLines] {
 					currentHunkBody = append(currentHunkBody, " "+line)
 				}
-				currentHunk.OrigLines = currentOldI + contextLines + 1 - currentHunk.OrigStartLine
-				currentHunk.NewLines = currentNewI + contextLines + 1 - currentHunk.NewStartLine
+				currentHunk.OrigLines = currentOldI + contextLines - currentHunk.OrigStartLine
+				currentHunk.NewLines = currentNewI + contextLines - currentHunk.NewStartLine
 				currentHunk.Body = []byte(strings.Join(currentHunkBody, "\n") + "\n")
 				fileDiff.Hunks = append(fileDiff.Hunks, currentHunk)
 			}
@@ -662,7 +662,7 @@ func convertChunksIntoFileDiff(chunks []dbd.Chunk, fileDiff *diff.FileDiff) {
 
 			// Clean currentHunkBody
 			currentHunkBody = []string{}
-			for _, line := range c.Equal[len(c.Equal)-contextLines-1:] {
+			for _, line := range c.Equal[len(c.Equal)-contextLines:] {
 				currentHunkBody = append(currentHunkBody, " "+line)
 			}
 
