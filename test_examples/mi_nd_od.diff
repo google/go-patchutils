@@ -4,14 +4,13 @@ Only in mixed_updated_new_source: f3_deleted_in_olddiff.txt
 +++ mixed_old_source/f5_same_in_both_sources.txt
 --- mixed_updated_new_source/f6_no_changes_to_olddiff.txt
 +++ mixed_old_source/f6_no_changes_to_olddiff.txt
-@@ -1,6 +1,5 @@
+@@ -1,5 +1,4 @@
  Text is generated in https://vole.wtf/text-generator/
  Children of the sun,
 -Children of the sun,
  see your time has just begun,
  searching for your ways,
 @@ -14,3 +13,2 @@
- Do-do-do-do ah-ah-ah, do-do-do-do, Cities of Gold.
  Do-do-do-do, Cities of Gold. Ah-ah-ah-ah-ah…
  some day we will find The Cities of Gold.
 -some day we will find The Cities of Silver.
@@ -42,3 +41,4 @@ Only in mixed_updated_new_source: f3_deleted_in_olddiff.txt
 -flowers, rivers, sand and sea,
  snowflakes and the stars are free.
  Every day and night,
+Only in mixed_updated_old_source: f2_added_in_old_diff.txt

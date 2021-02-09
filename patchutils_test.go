@@ -128,6 +128,14 @@ var mixedModePathFileTests = []struct {
 		wantErr:     false,
 	},
 	{
+		oldSource:   "mixed_old_source/f6_no_changes_to_olddiff.txt",
+		oldDiffFile: "mi_f6_os_od.diff",
+		newSource:   "mixed_new_source/f6_no_changes_to_olddiff.txt",
+		newDiffFile: "mi_f6_ns_nd.diff",
+		resultFile:  "mi_f6_od_nd.diff",
+		wantErr:     false,
+	},
+	{
 		oldSource:   "mixed_old_source",
 		oldDiffFile: "mi_os_od.diff",
 		newSource:   "mixed_new_source",
@@ -176,19 +184,17 @@ func init() {
 func TestInterDiffMode(t *testing.T) {
 	for _, tt := range interDiffFileTests {
 		t.Run(tt.resultFile, func(t *testing.T) {
-			var fileA, errA = os.Open(tt.diffAFile)
-			var fileB, errB = os.Open(tt.diffBFile)
-
-			if errA != nil {
+			fileA, err := os.Open(tt.diffAFile)
+			if err != nil {
 				t.Errorf("Error in opening %s file.", tt.diffAFile)
 			}
-
-			if errB != nil {
+			
+			fileB, err := os.Open(tt.diffBFile)
+			if err != nil {
 				t.Errorf("Error in opening %s file.", tt.diffBFile)
 			}
 
 			correctResult, err := ioutil.ReadFile(tt.resultFile)
-
 			if err != nil {
 				t.Error(err)
 			}
@@ -197,11 +203,13 @@ func TestInterDiffMode(t *testing.T) {
 			var readerB io.Reader = fileB
 
 			currentResult, err := InterDiff(readerA, readerB)
-
+			
+			want := normalizeNewlines(correctResult)
+			got := normalizeNewlines([]byte(currentResult))			
 			if (tt.wantErr == nil) && (err == nil) {
-				if d := cmp.Diff(normalizeNewlines(correctResult), normalizeNewlines([]byte(currentResult))); d != "" {
+				if !cmp.Equal(want, got){
 					t.Errorf("File contents mismatch for %s (-want +got):\n%s",
-						tt.resultFile, d)
+						tt.resultFile, cmp.Diff(want, got))
 				}
 			} else if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Interdiff mode for %q: got error %v; want error %v", tt.resultFile, err, tt.wantErr)
@@ -234,10 +242,13 @@ func TestApplyDiff(t *testing.T) {
 			}
 
 			currentResult, err := applyDiff(string(source), d)
+			
+			want := normalizeNewlines(correctResult)
+			got := normalizeNewlines([]byte(currentResult))				
 			if (tt.wantErr == nil) && (err == nil) {
-				if d := cmp.Diff(normalizeNewlines(correctResult), normalizeNewlines([]byte(currentResult))); d != "" {
+				if !cmp.Equal(want, got) {
 					t.Errorf("File contents mismatch for %s (-want +got):\n%s",
-						tt.resultFile, d)
+						 tt.resultFile, cmp.Diff(want, got))
 				}
 			} else if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Applying diff for %q: got error %v; want error %v", tt.resultFile, err, tt.wantErr)
@@ -293,10 +304,12 @@ func TestMixedMode(t *testing.T) {
 				t.Errorf("printing result diff for file %q: %v",
 					tt.resultFile, err)
 			}
-
-			if d := cmp.Diff(normalizeNewlines(correctResult), normalizeNewlines([]byte(currentResult))); d != "" {
+			
+			want := normalizeNewlines(correctResult)
+			got := normalizeNewlines([]byte(currentResult))				
+			if !cmp.Equal(want, got) {
 				t.Errorf("File contents mismatch for %s (-want +got):\n%s",
-					tt.resultFile, d)
+					 tt.resultFile, cmp.Diff(want, got))
 			}
 		})
 	}
@@ -335,10 +348,12 @@ func TestMixedModeFile(t *testing.T) {
 			if err != nil {
 				t.Errorf("Mixed mode for %q: got error %v; want error nil", tt.resultFile, err)
 			}
-
-			if d := cmp.Diff(normalizeNewlines(correctResult), normalizeNewlines([]byte(currentResult))); d != "" {
+			
+			want := normalizeNewlines(correctResult)
+			got := normalizeNewlines([]byte(currentResult))	
+			if !cmp.Equal(want, got) {
 				t.Errorf("File contents mismatch for %s (-want +got):\n%s",
-					tt.resultFile, d)
+					 tt.resultFile, cmp.Diff(want, got))
 			}
 		})
 	}
@@ -370,10 +385,12 @@ func TestMixedModePath(t *testing.T) {
 				if err != nil {
 					t.Errorf("MixedModePath for %q: got error %v; want error nil", tt.resultFile, err)
 				}
-
-				if d := cmp.Diff(normalizeNewlines(correctResult), normalizeNewlines([]byte(currentResult))); d != "" {
+				
+				want := normalizeNewlines(correctResult)
+				got := normalizeNewlines([]byte(currentResult))	
+				if !cmp.Equal(want, got) {
 					t.Errorf("File contents mismatch for %s (-want +got):\n%s",
-						tt.resultFile, d)
+						 tt.resultFile, cmp.Diff(want, got))
 				}
 			}
 		})
