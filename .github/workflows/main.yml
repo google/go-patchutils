@@ -3,7 +3,7 @@ on:
     tags:
     - v*
     branches:
-    - master
+    - main
   pull_request:
 name: Test and Lint
 jobs:
@@ -21,14 +21,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Test
-      run: go test ./...
+      run: go test -v  -coverprofile=coverage.txt -covermode=atomic ./...
   lint:
     name: lint
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v1
+      uses: golangci/golangci-lint-action@v2
       with:
         # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
         version: v1.28

@@ -1,0 +1,12 @@
+--- mixed_old_source/f6_no_changes_to_olddiff.txt
++++ mixed_updated_new_source/f6_no_changes_to_olddiff.txt	2020-10-30 11:32:22.322300642 +0000
+@@ -1,4 +1,5 @@
+ Text is generated in https://vole.wtf/text-generator/
+ Children of the sun,
++Children of the sun,
+ see your time has just begun,
+ searching for your ways,
+@@ -13,2 +14,3 @@
+ Do-do-do-do, Cities of Gold. Ah-ah-ah-ah-ah…
+ some day we will find The Cities of Gold.
++some day we will find The Cities of Silver.

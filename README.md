@@ -1,4 +1,4 @@
-# go-patchutils [![GoDoc](https://godoc.org/github.com/google/go-patchutils?status.svg)](https://godoc.org/github.com/google/go-patchutils) [![Go Report Card](https://goreportcard.com/badge/github.com/google/go-patchutils)](https://goreportcard.com/report/github.com/google/go-patchutils)
+# go-patchutils [![GoDoc](https://godoc.org/github.com/google/go-patchutils?status.svg)](https://godoc.org/github.com/google/go-patchutils) [![Go Report Card](https://goreportcard.com/badge/github.com/google/go-patchutils)](https://goreportcard.com/report/github.com/google/go-patchutils) [![Coverage](https://gocover.io/_badge/github.com/google/go-patchutils)](https://gocover.io/github.com/google/go-patchutils)
 Package patchutils provides tools to compute the diff between source and diff files.
 
 Works with diff files in [unified format](http://gnu.org/software/diffutils/manual/html_node/Unified-Format.html).
@@ -282,12 +282,12 @@ go build
 
 **Interdiff mode**
 ```shell
-./cli interdiff -olddiff=<path_to_old_diff> -newdiff=<path_to_new_diff>
+./cli interdiff -olddiff=<FILENAME> -newdiff=<FILENAME>
 ```
 
 **Mixed mode**
 ```shell
-./cli mixed -oldsource=<path_to_old_source> -olddiff=<path_to_old_diff> 
--newsource=<path_to_new_source> -newdiff=<path_to_new_diff>
+./cli mixed -oldsource=<PATHNAME> -olddiff=<FILENAME> 
+-newsource=<PATHNAME> -newdiff=<FILENAME>
 ```
 
